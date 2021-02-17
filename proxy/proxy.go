@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	l "cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/logger"
+	l "github.com/RomanLorens/logviewer-module/logger"
 )
 
 var logger = l.L

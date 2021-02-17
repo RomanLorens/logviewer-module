@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"path"
 
-	e "cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/error"
-	l "cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/logger"
-	"cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/model"
-	"cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/search"
-	"cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/stat"
+	e "github.com/RomanLorens/logviewer-module/error"
+	l "github.com/RomanLorens/logviewer-module/logger"
+	"github.com/RomanLorens/logviewer-module/model"
+	"github.com/RomanLorens/logviewer-module/search"
+	"github.com/RomanLorens/logviewer-module/stat"
 )
 
 var logger = l.L

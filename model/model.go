@@ -1,7 +1,7 @@
 package model
 
 import (
-	e "cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/error"
+	e "github.com/RomanLorens/logviewer-module/error"
 )
 
 //Application application

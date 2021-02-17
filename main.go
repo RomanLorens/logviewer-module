@@ -6,9 +6,9 @@ import (
 	"log"
 	"net/http"
 
-	e "cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/error"
-	h "cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/handler"
-	"cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/model"
+	e "github.com/RomanLorens/logviewer-module/error"
+	h "github.com/RomanLorens/logviewer-module/handler"
+	"github.com/RomanLorens/logviewer-module/model"
 )
 
 func main() {

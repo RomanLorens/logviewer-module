@@ -7,10 +7,10 @@ import (
 	"os"
 	"strings"
 
-	e "cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/error"
-	l "cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/logger"
-	"cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/model"
-	"cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/search"
+	e "github.com/RomanLorens/logviewer-module/error"
+	l "github.com/RomanLorens/logviewer-module/logger"
+	"github.com/RomanLorens/logviewer-module/model"
+	"github.com/RomanLorens/logviewer-module/search"
 )
 
 //ReqID req id

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	e "cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/error"
-	"cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/model"
+	e "github.com/RomanLorens/logviewer-module/error"
+	"github.com/RomanLorens/logviewer-module/model"
 )
 
 //LogSearch available log actions

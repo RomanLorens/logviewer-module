@@ -1,5 +1,5 @@
-"cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module v0.0.0-20201127145008-6d26bc5538b4 h1:cUq7T1oI2ujVyDloEqxaiqOUlZ/ofZ9kuW2FRxBRdpI=
-"cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module v0.0.0-20201127145008-6d26bc5538b4/go.mod h1:K+ieAIZ0WVEVWzFv3sfuVWxSQZYZL+ZHY8Sh5XjT2BU=
+"github.com/RomanLorens/logviewer-module v0.0.0-20201127145008-6d26bc5538b4 h1:cUq7T1oI2ujVyDloEqxaiqOUlZ/ofZ9kuW2FRxBRdpI=
+"github.com/RomanLorens/logviewer-module v0.0.0-20201127145008-6d26bc5538b4/go.mod h1:K+ieAIZ0WVEVWzFv3sfuVWxSQZYZL+ZHY8Sh5XjT2BU=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/RomanLorens/logger v0.0.0-20210126191236-b9e72037382d h1:70B7lAH5AWmliAoQxX2qTiC9nAScGtC9B08PWRfH1pA=

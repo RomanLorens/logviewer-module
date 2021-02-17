@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	e "cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/error"
-	"cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/model"
+	e "github.com/RomanLorens/logviewer-module/error"
+	"github.com/RomanLorens/logviewer-module/model"
 )
 
 //RemoteSearch remote search

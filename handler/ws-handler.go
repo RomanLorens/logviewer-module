@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	e "cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/error"
-	"cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/model"
-	"cedt-icg-bitbucket.nam.nsroot.net/bitbucket/users/rl78794/repos/logviewer-module/search"
+	e "github.com/RomanLorens/logviewer-module/error"
+	"github.com/RomanLorens/logviewer-module/model"
+	"github.com/RomanLorens/logviewer-module/search"
 	"github.com/gorilla/websocket"
 )
 
