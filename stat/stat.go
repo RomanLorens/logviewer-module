@@ -158,6 +158,50 @@ func remoteStats(ctx context.Context, app *model.Application) (map[string]*Stat,
 	return res, nil
 }
 
+//CollectStats collects stats
+func CollectStats(log string, ls *model.LogStructure, date string) (*model.CollectStatsMongo, *e.Error) {
+	file, err := os.Open(log)
+	if err != nil {
+		return nil, e.AppError("Could not open log file, %v", err)
+	}
+	defer file.Close()
+
+	//user -> level -> counter
+	m := make(map[string]map[string]int)
+	maxTokens := max(ls)
+	scanner := bufio.NewScanner(file)
+	requests := make(map[string]int, 0)
+	for scanner.Scan() {
+		tokens := strings.Split(scanner.Text(), "|")
+		if len(tokens) < maxTokens {
+			continue
+		}
+		if !strings.Contains(tokens[ls.Date], date) {
+			continue
+		}
+		user := tokens[ls.User]
+		if len(strings.TrimSpace(user)) == 0 {
+			continue
+		}
+		level := strings.ToUpper(search.NormalizeText(tokens[ls.Level]))
+		key := tokens[ls.Reqid] + level + user
+		requests[key]++
+		if requests[key] > 1 {
+			continue
+		}
+		u, ok := m[user]
+		if !ok {
+			u = make(map[string]int, 0)
+			m[user] = u
+		}
+		u[level]++
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, e.AppError("Error from scanner, %v", err)
+	}
+	return &model.CollectStatsMongo{Users: m, TotalRequests: int32(len(requests))}, nil
+}
+
 func stats(log string, ls *model.LogStructure) (map[string]*Stat, *e.Error) {
 	out := make(map[string]*Stat, 0)
 	requests := make(map[string]int, 0)

@@ -44,6 +44,16 @@ func Stats(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
 	return stat.Get(r.Context(), app)
 }
 
+//CollectStats collect stats
+func CollectStats(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
+	var s model.CollectStats
+	err := json.NewDecoder(r.Body).Decode(&s)
+	if err != nil {
+		return nil, e.ClientError("Could not parse req body, %v", err)
+	}
+	return stat.CollectStats(s.LogPath, s.LogStructure, s.Date)
+}
+
 //Errors errors
 func Errors(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
 	app, err := toApp(r)

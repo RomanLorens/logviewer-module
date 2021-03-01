@@ -20,6 +20,20 @@ func main() {
 	register("/lv/"+model.ErrorsEndpoint, h.Errors)
 	register("/lv/support/proxy", h.ProxyHandler)
 
+	/*
+		task := scheduler.Task{Name: "stats collector",
+			Callback: func(ctx context.Context) {
+				ls := &model.LogStructure{Date: 0, Level: 3, User: 1, Reqid: 2, Message: 5}
+				s, err := stat.CollectStats("logs/out.log", ls, "2021/02/18")
+				if err != nil {
+					fmt.Printf("error %v", err)
+				}
+				fmt.Println(s)
+			},
+		}
+		scheduler.Schedule(context.Background(), &task, time.Second*20)
+	*/
+
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 

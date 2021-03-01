@@ -51,11 +51,25 @@ type LogDownload struct {
 
 //LogStructure log structure
 type LogStructure struct {
-	Date    int `json:"date"`
-	User    int `json:"user"`
-	Reqid   int `json:"reqid"`
-	Level   int `json:"level"`
-	Message int `json:"message"`
+	Date       int    `json:"date"`
+	User       int    `json:"user"`
+	Reqid      int    `json:"reqid"`
+	Level      int    `json:"level"`
+	Message    int    `json:"message"`
+	DateFormat string `json:"dateFormat"`
+}
+
+//CollectStats collect stats
+type CollectStats struct {
+	LogPath      string        `json:"logPath"`
+	LogStructure *LogStructure `json:"logStructure"`
+	Date         string        `date:"date"`
+}
+
+//CollectStatsMongo collect stats mongo
+type CollectStatsMongo struct {
+	Users         map[string]map[string]int `json:"users"`
+	TotalRequests int32                     `json:"totalRequests"`
 }
 
 const (
@@ -71,4 +85,6 @@ const (
 	StatsEndpoint = "stats"
 	//ErrorsEndpoint errors
 	ErrorsEndpoint = "errors"
+	//CollectStatsEndpoint collect stats
+	CollectStatsEndpoint = "collect-stats"
 )
