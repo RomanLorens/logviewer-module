@@ -15,8 +15,9 @@ func init() {
 	if path == "" {
 		path = "logs/logviewer.log"
 	}
-	L, err := log.New(log.WithConfig(path).Build())
+	_l, err := log.New(log.WithConfig(path).Build())
 	if err != nil {
 		L.Error(context.Background(), "Could not create file logger, %v", err)
 	}
+	L = _l
 }
