@@ -24,7 +24,7 @@ func DownloadLog(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error)
 		return nil, e.AppError("missing log download body, %w", err)
 	}
 	defer r.Body.Close()
-	b, er := search.DownloadLog(r.Context(), &ld)
+	b, er := search.DownloadLog(r, &ld)
 	if er != nil {
 		return nil, e.AppError("download log,%w", err)
 	}
@@ -41,7 +41,7 @@ func Stats(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
 	if err != nil {
 		return nil, err
 	}
-	return stat.Get(r.Context(), app)
+	return stat.Get(r, app)
 }
 
 //CollectStats collect stats
@@ -60,7 +60,7 @@ func Errors(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
 	if err != nil {
 		return nil, err
 	}
-	return stat.GetErrors(r.Context(), app)
+	return stat.GetErrors(r, app)
 }
 
 //TailLog tail log
@@ -69,7 +69,7 @@ func TailLog(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
 	if err != nil {
 		return nil, err
 	}
-	return search.TailLog(r.Context(), app)
+	return search.TailLog(r, app)
 }
 
 //ListLogs list logs
@@ -78,7 +78,7 @@ func ListLogs(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
 	if err != nil {
 		return nil, err
 	}
-	return search.ListLogs(r.Context(), s)
+	return search.ListLogs(r, s)
 }
 
 func toApp(r *http.Request) (*model.Application, *e.Error) {
@@ -101,7 +101,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) (interface{}, *e.Erro
 	if err != nil {
 		return nil, err
 	}
-	res, er := search.Find(r.Context(), s)
+	res, er := search.Find(r, s)
 	return res, er
 }
 

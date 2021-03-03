@@ -2,8 +2,8 @@ package stat
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
+	"net/http"
 	"os"
 	"strings"
 
@@ -52,19 +52,19 @@ type ErrorDetailsPagination struct {
 var logger = l.L
 
 //GetErrors get errors
-func GetErrors(ctx context.Context, app *model.Application) (*ErrorDetailsPagination, *e.Error) {
-	if search.IsLocal(ctx, app.Host) {
-		logger.Info(ctx, "Getting error locally")
+func GetErrors(r *http.Request, app *model.Application) (*ErrorDetailsPagination, *e.Error) {
+	if search.IsLocal(r, app.Host) {
+		logger.Info(r.Context(), "Getting error locally")
 		return getErrorsLocal(app.Log, app)
 	}
-	return getErrorsRemotely(ctx, app.Log, app)
+	return getErrorsRemotely(r, app.Log, app)
 }
 
-func getErrorsRemotely(ctx context.Context, log string, app *model.Application) (*ErrorDetailsPagination, *e.Error) {
-	logger.Info(ctx, "Stats log remotely")
+func getErrorsRemotely(r *http.Request, log string, app *model.Application) (*ErrorDetailsPagination, *e.Error) {
+	logger.Info(r.Context(), "Stats log remotely")
 	var res *ErrorDetailsPagination
 	url := search.ApiURL(app.Host, model.ErrorsEndpoint)
-	body, err := search.CallAPI(ctx, url, app)
+	body, err := search.CallAPI(r, url, app)
 	if err != nil {
 		return nil, err
 	}
@@ -132,23 +132,23 @@ func getErrorsLocal(log string, app *model.Application) (*ErrorDetailsPagination
 }
 
 //Get gets stats
-func Get(ctx context.Context, app *model.Application) (map[string]*Stat, *e.Error) {
-	if search.IsLocal(ctx, app.Host) {
-		logger.Info(ctx, "Checking locally stats")
+func Get(r *http.Request, app *model.Application) (map[string]*Stat, *e.Error) {
+	if search.IsLocal(r, app.Host) {
+		logger.Info(r.Context(), "Checking locally stats")
 		if app.LogStructure.Date == 0 && app.LogStructure.Level == 0 {
 			return nil, e.ClientError("Must pass log structure - was empty %v", app.LogStructure)
 		}
 		return stats(app.Log, &app.LogStructure)
 	}
-	return remoteStats(ctx, app)
+	return remoteStats(r, app)
 
 }
 
-func remoteStats(ctx context.Context, app *model.Application) (map[string]*Stat, *e.Error) {
-	logger.Info(ctx, "Stats log remotely")
+func remoteStats(r *http.Request, app *model.Application) (map[string]*Stat, *e.Error) {
+	logger.Info(r.Context(), "Stats log remotely")
 	var res map[string]*Stat
 	url := search.ApiURL(app.Host, model.StatsEndpoint)
-	body, err := search.CallAPI(ctx, url, app)
+	body, err := search.CallAPI(r, url, app)
 	if err != nil {
 		return nil, err
 	}

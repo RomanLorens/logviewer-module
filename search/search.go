@@ -3,7 +3,6 @@ package search
 import (
 	"context"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -27,40 +26,40 @@ var (
 )
 
 //DownloadLog download log
-func DownloadLog(ctx context.Context, lg *model.LogDownload) ([]byte, *e.Error) {
+func DownloadLog(r *http.Request, lg *model.LogDownload) ([]byte, *e.Error) {
 	if lg.Host == "" || lg.Log == "" {
 		return nil, e.Errorf(400, "Payload is missing host and/or log values")
 	}
-	if IsLocal(ctx, lg.Host) {
-		return ls.DownloadLog(ctx, lg)
+	if IsLocal(r, lg.Host) {
+		return ls.DownloadLog(r.Context(), lg)
 	}
-	return rs.DownloadLog(ctx, lg)
+	return rs.DownloadLog(r, lg)
 }
 
 //TailLog tail log
-func TailLog(ctx context.Context, app *model.Application) (*model.Result, *e.Error) {
-	if IsLocal(ctx, app.Host) {
-		return ls.Tail(ctx, app)
+func TailLog(r *http.Request, app *model.Application) (*model.Result, *e.Error) {
+	if IsLocal(r, app.Host) {
+		return ls.Tail(r.Context(), app)
 	}
-	return rs.Tail(ctx, app)
+	return rs.Tail(r, app)
 }
 
 //Find find logs
-func Find(ctx context.Context, s *model.Search) ([]*model.Result, *e.Error) {
+func Find(r *http.Request, s *model.Search) ([]*model.Result, *e.Error) {
 	if err := validate(s); err != nil {
 		return nil, err
 	}
 	out := make(chan []*model.Result, len(s.Hosts))
 	for _, host := range s.Hosts {
 		go func(host string) {
-			logger.Info(ctx, "starting goroutine for %v", host)
+			logger.Info(r.Context(), "starting goroutine for %v", host)
 			start := time.Now()
-			local := IsLocal(ctx, host)
+			local := IsLocal(r, host)
 			var res []*model.Result
 			if local {
-				res = ls.Grep(ctx, host, s)
+				res = ls.Grep(r.Context(), host, s)
 			} else {
-				r, err := rs.Grep(ctx, host, s)
+				r, err := rs.Grep(r, host, s)
 				if err != nil {
 					res = append(res, &model.Result{Error: err, Time: 0})
 				} else {
@@ -72,7 +71,7 @@ func Find(ctx context.Context, s *model.Search) ([]*model.Result, *e.Error) {
 			for _, r := range res {
 				r.Time = elapsed.Milliseconds()
 			}
-			logger.Info(ctx, "goroutine for %v finished", host)
+			logger.Info(r.Context(), "goroutine for %v finished", host)
 			out <- res
 		}(host)
 	}
@@ -80,25 +79,25 @@ func Find(ctx context.Context, s *model.Search) ([]*model.Result, *e.Error) {
 }
 
 //ListLogs list logs for app
-func ListLogs(ctx context.Context, s *model.Search) ([]*model.LogDetails, *e.Error) {
+func ListLogs(r *http.Request, s *model.Search) ([]*model.LogDetails, *e.Error) {
 	logs := make([]*model.LogDetails, 0)
 	hc := make(chan string, len(s.Hosts))
 	for _, h := range s.Hosts {
 		go func(host string) {
-			logger.Info(ctx, "host routine for %v started...", host)
-			if IsLocal(ctx, host) {
-				l, _ := ls.List(ctx, host, s) //no error for local
+			logger.Info(r.Context(), "host routine for %v started...", host)
+			if IsLocal(r, host) {
+				l, _ := ls.List(r.Context(), host, s) //no error for local
 				logs = append(logs, l...)
 			} else {
-				l, err := rs.List(ctx, host, s)
+				l, err := rs.List(r, host, s)
 				if err == nil {
 					logs = append(logs, l...)
 				} else {
-					logger.Error(ctx, "Error from api, %v", err)
+					logger.Error(r.Context(), "Error from api, %v", err)
 				}
 			}
 			hc <- host
-			logger.Info(ctx, "host routine for %v finsihed", host)
+			logger.Info(r.Context(), "host routine for %v finsihed", host)
 		}(h)
 	}
 	<-hc //wait for all threads
@@ -106,13 +105,9 @@ func ListLogs(ctx context.Context, s *model.Search) ([]*model.LogDetails, *e.Err
 	return logs, nil
 }
 
-func IsLocal(ctx context.Context, host string) bool {
-	hostname, err := os.Hostname()
-	if err != nil {
-		logger.Error(ctx, "Could not check hostname, %v", err)
-		return false
-	}
-	if strings.Contains(strings.ToLower(host), strings.ToLower(hostname)) ||
+//IsLocal is local request
+func IsLocal(r *http.Request, host string) bool {
+	if strings.Contains(strings.ToLower(host), strings.ToLower(r.Host)) ||
 		strings.Contains(host, "://localhost") {
 		return true
 	}
