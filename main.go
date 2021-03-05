@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,9 +10,18 @@ import (
 	e "github.com/RomanLorens/logviewer-module/error"
 	h "github.com/RomanLorens/logviewer-module/handler"
 	"github.com/RomanLorens/logviewer-module/model"
+	"github.com/RomanLorens/logviewer-module/search"
 )
 
 func main() {
+
+	ls := search.LocalSearch{}
+	search := &model.Search{Logs: []string{"logs/out.log"}, Value: "1-01-CV-QCVVWMJCOLCBRCSJFMADJPD3C6EFMWG2710376801@1-454074#27"}
+	res := ls.Grep(context.Background(), "http://localhost", search)
+	for _, r := range res {
+		fmt.Println(r.Lines)
+	}
+	return
 	http.HandleFunc("/", root)
 	register("/lv/health", h.HealthHandler)
 	register("/lv/"+model.SearchEndpoint, h.SearchHandler)

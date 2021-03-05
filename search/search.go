@@ -52,7 +52,7 @@ func Find(r *http.Request, s *model.Search) ([]*model.Result, *e.Error) {
 	out := make(chan []*model.Result, len(s.Hosts))
 	for _, host := range s.Hosts {
 		go func(host string) {
-			logger.Info(r.Context(), "starting goroutine for %v", host)
+			logger.Info(r.Context(), "starting grep goroutine for %v", host)
 			start := time.Now()
 			local := IsLocal(r, host)
 			var res []*model.Result

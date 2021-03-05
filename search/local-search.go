@@ -23,9 +23,9 @@ var logger = l.L
 
 //Grep grep logs
 func (LocalSearch) Grep(ctx context.Context, host string, s *model.Search) []*model.Result {
-	logger.Info(ctx, "Local grep for %v", host)
 	out := make([]*model.Result, 0, len(s.Logs))
 	for _, l := range s.Logs {
+		logger.Info(ctx, "Local grep for %v - '%v'", l, s.Value)
 		r := model.Result{LogFile: l, Host: host}
 		lines, err := grepFile(l, s)
 		r.Error = err
