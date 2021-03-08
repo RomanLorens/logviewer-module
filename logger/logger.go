@@ -17,7 +17,7 @@ func init() {
 	}
 	_l, err := log.New(log.WithConfig(path).Build())
 	if err != nil {
-		L.Error(context.Background(), "Could not create file logger, %v", err)
+		_l.Error(context.Background(), "Could not create file logger, %v", err)
 	}
 	L = _l
 }
