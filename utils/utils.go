@@ -3,8 +3,10 @@ package utils
 import (
 	"context"
 	"fmt"
+	"os"
 	"runtime/debug"
 
+	e "github.com/RomanLorens/logviewer-module/error"
 	l "github.com/RomanLorens/logviewer-module/logger"
 )
 
@@ -20,4 +22,16 @@ func CatchError(ctx context.Context) {
 			fmt.Println(m)
 		}
 	}
+}
+
+//Hostname gets hostname from unix box or hostname env
+func Hostname() (string, *e.Error) {
+	h, _ := os.Hostname()
+	if h == "" {
+		h = os.Getenv("hostname")
+		if h == "" {
+			return "", e.AppError("Could not resolve hostname")
+		}
+	}
+	return h, nil
 }
