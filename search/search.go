@@ -107,8 +107,7 @@ func ListLogs(r *http.Request, s *model.Search) ([]*model.LogDetails, *e.Error) 
 
 //IsLocal is local request
 func IsLocal(r *http.Request, host string) bool {
-	if strings.Contains(strings.ToLower(host), strings.ToLower(r.Host)) ||
-		strings.Contains(host, "://localhost") {
+	if strings.Contains(strings.ToLower(r.RemoteAddr), strings.ToLower(host)) {
 		return true
 	}
 	return false

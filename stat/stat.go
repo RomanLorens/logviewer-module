@@ -64,7 +64,7 @@ func getErrorsRemotely(r *http.Request, log string, app *model.Application) (*Er
 	logger.Info(r.Context(), "Stats log remotely")
 	var res *ErrorDetailsPagination
 	url := search.ApiURL(app.Host, model.ErrorsEndpoint)
-	body, err := search.CallAPI(r, url, app)
+	body, err := search.CallAPI(r.Context(), url, app, r.Header)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func remoteStats(r *http.Request, app *model.Application) (map[string]*Stat, *e.
 	logger.Info(r.Context(), "Stats log remotely")
 	var res map[string]*Stat
 	url := search.ApiURL(app.Host, model.StatsEndpoint)
-	body, err := search.CallAPI(r, url, app)
+	body, err := search.CallAPI(r.Context(), url, app, r.Header)
 	if err != nil {
 		return nil, err
 	}

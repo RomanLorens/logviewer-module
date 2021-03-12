@@ -2,6 +2,7 @@ package search
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"io/ioutil"
@@ -27,7 +28,7 @@ func (RemoteSearch) Tail(r *http.Request, app *model.Application) (*model.Result
 	logger.Info(r.Context(), "Tail log remotely")
 	var res *model.Result
 	url := ApiURL(app.Host, model.TailLogEndpoint)
-	body, err := CallAPI(r, url, app)
+	body, err := CallAPI(r.Context(), url, app, r.Header)
 	if err != nil {
 		return nil, err
 	}
@@ -41,14 +42,14 @@ func (RemoteSearch) Tail(r *http.Request, app *model.Application) (*model.Result
 func (RemoteSearch) DownloadLog(r *http.Request, ld *model.LogDownload) ([]byte, *e.Error) {
 	logger.Info(r.Context(), "Download log remotely")
 	url := ApiURL(ld.Host, model.DownloadLogEndpoint)
-	return CallAPI(r, url, ld)
+	return CallAPI(r.Context(), url, ld, r.Header)
 }
 
 //Grep grep logs
 func (RemoteSearch) Grep(r *http.Request, url string, s *model.Search) ([]*model.Result, *e.Error) {
 	logger.Info(r.Context(), "Grep log remotely")
 	url = ApiURL(url, model.SearchEndpoint)
-	body, err := CallAPI(r, url, s)
+	body, err := CallAPI(r.Context(), url, s, r.Header)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +64,7 @@ func (RemoteSearch) Grep(r *http.Request, url string, s *model.Search) ([]*model
 func (RemoteSearch) List(r *http.Request, url string, s *model.Search) ([]*model.LogDetails, *e.Error) {
 	var logs []*model.LogDetails
 	url = ApiURL(url, model.ListLogsEndpoint)
-	body, err := CallAPI(r, url, s)
+	body, err := CallAPI(r.Context(), url, s, r.Header)
 	if err != nil {
 		return nil, err
 	}
@@ -74,8 +75,8 @@ func (RemoteSearch) List(r *http.Request, url string, s *model.Search) ([]*model
 }
 
 //CallAPI call api
-func CallAPI(r *http.Request, url string, post interface{}) ([]byte, *e.Error) {
-	logger.Info(r.Context(), "Remote api for %v", url)
+func CallAPI(ctx context.Context, url string, post interface{}, headers http.Header) ([]byte, *e.Error) {
+	logger.Info(ctx, "Remote api for %v", url)
 	b, err := json.Marshal(post)
 	if err != nil {
 		return nil, e.Errorf(500, "Could not marshal post %v", err)
@@ -86,7 +87,7 @@ func CallAPI(r *http.Request, url string, post interface{}) ([]byte, *e.Error) {
 		return nil, e.AppError("Could not create req for %v, %v", url, err)
 	}
 	req.Header.Add("Content-Type", "application/json")
-	for k, vals := range r.Header {
+	for k, vals := range headers {
 		for _, v := range vals {
 			req.Header.Add(k, v)
 		}
@@ -95,7 +96,7 @@ func CallAPI(r *http.Request, url string, post interface{}) ([]byte, *e.Error) {
 	if err != nil {
 		return nil, e.Errorf(500, "Request to %v failed, %v", url, err)
 	}
-	logger.Info(r.Context(), "Api response %v", resp)
+	logger.Info(ctx, "Api response %v", resp)
 	if resp.StatusCode != 200 {
 		return nil, e.Errorf(resp.StatusCode, "Request to %v failed, %v", url, err)
 	}
