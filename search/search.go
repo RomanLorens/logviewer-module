@@ -9,6 +9,7 @@ import (
 
 	e "github.com/RomanLorens/logviewer-module/error"
 	"github.com/RomanLorens/logviewer-module/model"
+	"github.com/RomanLorens/logviewer-module/utils"
 )
 
 //LogSearch available log actions
@@ -106,8 +107,13 @@ func ListLogs(r *http.Request, s *model.Search) ([]*model.LogDetails, *e.Error) 
 }
 
 //IsLocal is local request
-func IsLocal(r *http.Request, host string) bool {
-	return strings.Contains(strings.ToLower(r.RemoteAddr), strings.ToLower(host))
+func IsLocal(r *http.Request, url string) bool {
+	hostname, err := utils.Hostname()
+	if err != nil {
+		logger.Error(r.Context(), "Could not resolve hostname - defaults to local host, %v", err)
+		return true
+	}
+	return strings.Contains(strings.ToLower(url), strings.ToLower(hostname))
 }
 
 func validate(s *model.Search) *e.Error {
