@@ -51,7 +51,7 @@ func CollectStats(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error
 	if err != nil {
 		return nil, e.ClientError("Could not parse req body, %v", err)
 	}
-	return stat.CollectStats(s.LogPath, s.LogStructure, s.Date)
+	return stat.CollectStats(r.Context(), s.LogPath, s.LogStructure, s.Date)
 }
 
 //Errors errors

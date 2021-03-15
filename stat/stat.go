@@ -2,9 +2,11 @@ package stat
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	e "github.com/RomanLorens/logviewer-module/error"
@@ -158,47 +160,76 @@ func remoteStats(r *http.Request, app *model.Application) (map[string]*Stat, *e.
 	return res, nil
 }
 
-//CollectStats collects stats
-func CollectStats(log string, ls *model.LogStructure, date string) (*model.CollectStatsMongo, *e.Error) {
-	file, err := os.Open(log)
+func getFilesByPattern(log string) ([]string, *e.Error) {
+	dir := filepath.Dir(log)
+	info, err := os.Stat(dir)
 	if err != nil {
-		return nil, e.AppError("Could not open log file, %v", err)
+		return nil, e.ClientError("Could not open dir %v, %v", dir, err)
 	}
-	defer file.Close()
+	if !info.IsDir() {
+		return nil, e.ClientError("%v is not dir, %v", dir, info)
+	}
+	pattern := strings.Replace(filepath.Base(log), ".log", "", 1)
+	paths := make([]string, 0, 1)
+	filepath.Walk(dir, func(path string, fi os.FileInfo, err error) error {
+		if fi.IsDir() || !strings.Contains(path, pattern) {
+			return nil
+		}
+		paths = append(paths, path)
+		return nil
+	})
+	return paths, nil
+}
 
+//CollectStats collects stats
+func CollectStats(ctx context.Context, log string, ls *model.LogStructure, date string) (*model.CollectStatsMongo, *e.Error) {
+	paths, err := getFilesByPattern(log)
+	if err != nil {
+		return nil, err
+	}
+	logger.Info(ctx, "collect stats for paths %v and mod date %v", paths, date)
 	//user -> level -> counter
 	m := make(map[string]map[string]int)
-	maxTokens := max(ls)
-	scanner := bufio.NewScanner(file)
 	requests := make(map[string]int, 0)
-	for scanner.Scan() {
-		tokens := strings.Split(scanner.Text(), "|")
-		if len(tokens) < maxTokens {
-			continue
+	for _, p := range paths {
+		file, err := os.Open(p)
+		if err != nil {
+			return nil, e.AppError("Could not open log file, %v", err)
 		}
-		if !strings.Contains(tokens[ls.Date], date) {
-			continue
+		defer file.Close()
+
+		maxTokens := max(ls)
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			tokens := strings.Split(scanner.Text(), "|")
+			if len(tokens) < maxTokens {
+				continue
+			}
+			if !strings.Contains(tokens[ls.Date], date) {
+				continue
+			}
+			user := tokens[ls.User]
+			if len(strings.TrimSpace(user)) == 0 {
+				continue
+			}
+			level := strings.ToUpper(search.NormalizeText(tokens[ls.Level]))
+			key := tokens[ls.Reqid] + level + user
+			requests[key]++
+			if requests[key] > 1 {
+				continue
+			}
+			u, ok := m[user]
+			if !ok {
+				u = make(map[string]int, 0)
+				m[user] = u
+			}
+			u[level]++
 		}
-		user := tokens[ls.User]
-		if len(strings.TrimSpace(user)) == 0 {
-			continue
+		if err := scanner.Err(); err != nil {
+			return nil, e.AppError("Error from scanner, %v", err)
 		}
-		level := strings.ToUpper(search.NormalizeText(tokens[ls.Level]))
-		key := tokens[ls.Reqid] + level + user
-		requests[key]++
-		if requests[key] > 1 {
-			continue
-		}
-		u, ok := m[user]
-		if !ok {
-			u = make(map[string]int, 0)
-			m[user] = u
-		}
-		u[level]++
 	}
-	if err := scanner.Err(); err != nil {
-		return nil, e.AppError("Error from scanner, %v", err)
-	}
+
 	return &model.CollectStatsMongo{Users: m, TotalRequests: int32(len(requests))}, nil
 }
 

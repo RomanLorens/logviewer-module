@@ -11,9 +11,15 @@ import (
 	h "github.com/RomanLorens/logviewer-module/handler"
 	"github.com/RomanLorens/logviewer-module/model"
 	"github.com/RomanLorens/logviewer-module/search"
+	"github.com/RomanLorens/logviewer-module/stat"
 )
 
 func main() {
+
+	_ls := &model.LogStructure{Date: 0, Level: 3, User: 1, Reqid: 2, Message: 5}
+	_res, _ := stat.CollectStats(context.Background(), "logs/out.log", _ls, "2021/03/04")
+	fmt.Println(_res)
+	return
 
 	ls := search.LocalSearch{}
 	search := &model.Search{Logs: []string{"logs/out.log"}, Value: "1-01-CV-QCVVWMJCOLCBRCSJFMADJPD3C6EFMWG2710376801@1-454074#27"}
