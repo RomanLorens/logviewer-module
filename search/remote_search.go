@@ -54,8 +54,8 @@ func (RemoteSearch) Grep(r *http.Request, url string, s *model.Search) ([]*model
 		return nil, err
 	}
 	res := make([]*model.Result, len(s.Logs))
-	if er := json.Unmarshal(body, &r); er != nil {
-		return res, e.Errorf(500, "Could not read unmarshal, %v", er)
+	if er := json.Unmarshal(body, &res); er != nil {
+		return res, e.Errorf(500, "Could not unmarshal, %v", er)
 	}
 	return res, nil
 }
@@ -69,7 +69,7 @@ func (RemoteSearch) List(r *http.Request, url string, s *model.Search) ([]*model
 		return nil, err
 	}
 	if er := json.Unmarshal(body, &logs); er != nil {
-		return nil, e.Errorf(500, "Could not read unmarshal, %v", er)
+		return nil, e.Errorf(500, "Could not unmarshal, %v", er)
 	}
 	return logs, nil
 }

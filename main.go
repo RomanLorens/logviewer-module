@@ -11,22 +11,22 @@ import (
 	h "github.com/RomanLorens/logviewer-module/handler"
 	"github.com/RomanLorens/logviewer-module/model"
 	"github.com/RomanLorens/logviewer-module/search"
-	"github.com/RomanLorens/logviewer-module/stat"
 )
 
 func main() {
 
-	_ls := &model.LogStructure{Date: 0, Level: 3, User: 1, Reqid: 2, Message: 5}
-	_res, _ := stat.CollectStats(context.Background(), "logs/out.log", _ls, "2021/03/04")
-	fmt.Println(_res)
-	return
+	/*
+		_ls := &model.LogStructure{Date: 0, Level: 3, User: 1, Reqid: 2, Message: 5}
+		_res, _ := stat.CollectStats(context.Background(), "logs/out.log", _ls, "2021/03/04")
+		fmt.Println(_res)
+		return
+	*/
 
 	ls := search.LocalSearch{}
-	search := &model.Search{Logs: []string{"logs/out.log"}, Value: "1-01-CV-QCVVWMJCOLCBRCSJFMADJPD3C6EFMWG2710376801@1-454074#27"}
+	search := &model.Search{Logs: []string{"logs/out.log"}, Value: "1-01-CV-PCVXGPXG1A1BEFYWYWLKBAYFJEAEJFG5487457603@2-2897134#61"}
 	res := ls.Grep(context.Background(), "http://localhost", search)
-	for _, r := range res {
-		fmt.Println(r.Lines)
-	}
+	fmt.Printf(">>>> RES = %v\n", res[0].Lines)
+
 	return
 	http.HandleFunc("/", root)
 	register("/lv/health", h.HealthHandler)
