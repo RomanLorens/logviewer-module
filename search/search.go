@@ -14,31 +14,40 @@ import (
 
 var (
 	tailSizeKB = 16
-	ls         = LocalSearch{}
-	rs         = RemoteSearch{}
 )
 
+//Search search
+type Search struct {
+	logger l.Logger
+	ls     *LocalSearch
+	rs     *RemoteSearch
+}
+
+func NewSearch(logger l.Logger) *Search {
+	return &Search{logger: logger, ls: &LocalSearch{logger: logger}, rs: &RemoteSearch{logger: logger}}
+}
+
 //DownloadLog download log
-func DownloadLog(r *http.Request, lg *model.LogDownload) ([]byte, *e.Error) {
+func (s Search) DownloadLog(r *http.Request, lg *model.LogDownload) ([]byte, *e.Error) {
 	if lg.Host == "" || lg.Log == "" {
 		return nil, e.Errorf(400, "Payload is missing host and/or log values")
 	}
 	if IsLocal(r, lg.Host) {
-		return ls.DownloadLog(r.Context(), lg)
+		return s.ls.DownloadLog(r.Context(), lg)
 	}
-	return rs.DownloadLog(r, lg)
+	return s.rs.DownloadLog(r, lg)
 }
 
 //TailLog tail log
-func TailLog(r *http.Request, app *model.Application) (*model.Result, *e.Error) {
+func (s Search) TailLog(r *http.Request, app *model.Application) (*model.Result, *e.Error) {
 	if IsLocal(r, app.Host) {
-		return ls.Tail(r.Context(), app)
+		return s.ls.Tail(r.Context(), app)
 	}
-	return rs.Tail(r, app)
+	return s.rs.Tail(r, app)
 }
 
 //Find find logs
-func Find(r *http.Request, s *model.Search, logger l.Logger) ([]*model.Result, *e.Error) {
+func (se Search) Find(r *http.Request, s *model.Search, logger l.Logger) ([]*model.Result, *e.Error) {
 	if err := validate(s); err != nil {
 		return nil, err
 	}
@@ -50,9 +59,9 @@ func Find(r *http.Request, s *model.Search, logger l.Logger) ([]*model.Result, *
 			local := IsLocal(r, host)
 			var res []*model.Result
 			if local {
-				res = ls.Grep(r.Context(), host, s)
+				res = se.ls.Grep(r.Context(), host, s)
 			} else {
-				r, err := rs.Grep(r, host, s)
+				r, err := se.rs.Grep(r, host, s)
 				if err != nil {
 					res = append(res, &model.Result{Error: err, Time: 0})
 				} else {
@@ -72,17 +81,17 @@ func Find(r *http.Request, s *model.Search, logger l.Logger) ([]*model.Result, *
 }
 
 //ListLogs list logs for app
-func ListLogs(r *http.Request, s *model.Search, logger l.Logger) ([]*model.LogDetails, *e.Error) {
+func (se Search) ListLogs(r *http.Request, s *model.Search, logger l.Logger) ([]*model.LogDetails, *e.Error) {
 	logs := make([]*model.LogDetails, 0)
 	hc := make(chan string, len(s.Hosts))
 	for _, h := range s.Hosts {
 		go func(host string) {
 			logger.Info(r.Context(), "host routine for %v started...", host)
 			if IsLocal(r, host) {
-				l, _ := ls.List(r.Context(), host, s) //no error for local
+				l, _ := se.ls.List(r.Context(), host, s) //no error for local
 				logs = append(logs, l...)
 			} else {
-				l, err := rs.List(r, host, s)
+				l, err := se.rs.List(r, host, s)
 				if err == nil {
 					logs = append(logs, l...)
 				} else {

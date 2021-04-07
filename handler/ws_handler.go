@@ -45,7 +45,8 @@ func (h Handler) TailLogWS(w http.ResponseWriter, r *http.Request) *e.Error {
 
 	done := make(chan bool)
 	go func(c *websocket.Conn) {
-		res, err := search.TailLog(r, &app)
+		s := search.NewSearch(h.logger)
+		res, err := s.TailLog(r, &app)
 		if err != nil {
 			h.logger.Error(r.Context(), "Error from tail %v", err)
 			done <- true
@@ -56,7 +57,7 @@ func (h Handler) TailLogWS(w http.ResponseWriter, r *http.Request) *e.Error {
 			select {
 			case <-ticker.C:
 				h.logger.Info(r.Context(), "Checking tail logs with ticker")
-				res, err := search.TailLog(r, &app)
+				res, err := s.TailLog(r, &app)
 				if err != nil {
 					h.logger.Error(r.Context(), "Error from tail %v", err)
 					done <- true

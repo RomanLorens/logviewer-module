@@ -17,11 +17,12 @@ import (
 //Handler handler
 type Handler struct {
 	logger l.Logger
+	search *search.Search
 }
 
 //NewHandler new handler
 func NewHandler(logger l.Logger) *Handler {
-	return &Handler{logger: logger}
+	return &Handler{logger: logger, search: search.NewSearch(logger)}
 }
 
 //DownloadLog download log
@@ -32,7 +33,7 @@ func (h Handler) DownloadLog(w http.ResponseWriter, r *http.Request) (interface{
 		return nil, e.AppError("missing log download body, %w", err)
 	}
 	defer r.Body.Close()
-	b, er := search.DownloadLog(r, &ld)
+	b, er := h.search.DownloadLog(r, &ld)
 	if er != nil {
 		return nil, e.AppError("download log,%w", err)
 	}
@@ -77,7 +78,7 @@ func (h Handler) TailLog(w http.ResponseWriter, r *http.Request) (interface{}, *
 	if err != nil {
 		return nil, err
 	}
-	return search.TailLog(r, app)
+	return h.search.TailLog(r, app)
 }
 
 //ListLogs list logs
@@ -86,7 +87,7 @@ func (h Handler) ListLogs(w http.ResponseWriter, r *http.Request) (interface{}, 
 	if err != nil {
 		return nil, err
 	}
-	return search.ListLogs(r, s, h.logger)
+	return h.search.ListLogs(r, s, h.logger)
 }
 
 func toApp(r *http.Request) (*model.Application, *e.Error) {
@@ -109,7 +110,7 @@ func (h Handler) SearchHandler(w http.ResponseWriter, r *http.Request) (interfac
 	if err != nil {
 		return nil, err
 	}
-	res, er := search.Find(r, s, h.logger)
+	res, er := h.search.Find(r, s, h.logger)
 	return res, er
 }
 
