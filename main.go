@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -11,7 +10,6 @@ import (
 	e "github.com/RomanLorens/logviewer-module/error"
 	h "github.com/RomanLorens/logviewer-module/handler"
 	"github.com/RomanLorens/logviewer-module/model"
-	"github.com/RomanLorens/logviewer-module/search"
 )
 
 func main() {
@@ -23,12 +21,11 @@ func main() {
 		return
 	*/
 
-	ls := search.LocalSearch{}
-	search := &model.Search{Logs: []string{"logs/out.log"}, Value: "1-01-CV-PCVXGPXG1A1BEFYWYWLKBAYFJEAEJFG5487457603@2-2897134#61"}
-	res := ls.Grep(context.Background(), "http://localhost", search)
-	fmt.Printf(">>>> RES = %v\n", res[0].Lines)
+	// ls := search.LocalSearch{Logger: l.PrintLogger(false)}
+	// search := &model.Search{Logs: []string{"logs/out.log"}, Value: "1-01-CV-PCVXGPXG1A1BEFYWYWLKBAYFJEAEJFG5487457603@2-2897134#61"}
+	// res := ls.Grep(context.Background(), "http://localhost", search)
+	// fmt.Printf(">>>> RES = %v\n", res[0].Lines)
 
-	return
 	http.HandleFunc("/", root)
 	handler := h.NewHandler(l.PrintLogger(false))
 	register("/lv/health", handler.HealthHandler)
