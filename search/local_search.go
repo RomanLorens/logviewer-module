@@ -11,21 +11,21 @@ import (
 	"strings"
 	"time"
 
+	l "github.com/RomanLorens/logger/log"
 	e "github.com/RomanLorens/logviewer-module/error"
-	l "github.com/RomanLorens/logviewer-module/logger"
 	"github.com/RomanLorens/logviewer-module/model"
 )
 
 //LocalSearch local search
-type LocalSearch struct{}
-
-var logger = l.L
+type LocalSearch struct {
+	logger l.Logger
+}
 
 //Grep grep logs
-func (LocalSearch) Grep(ctx context.Context, host string, s *model.Search) []*model.Result {
+func (ls LocalSearch) Grep(ctx context.Context, host string, s *model.Search) []*model.Result {
 	out := make([]*model.Result, 0, len(s.Logs))
 	for _, l := range s.Logs {
-		logger.Info(ctx, "Local grep for %v - '%v'", l, s.Value)
+		ls.logger.Info(ctx, "Local grep for %v - '%v'", l, s.Value)
 		r := model.Result{LogFile: l, Host: host}
 		lines, err := grepFile(l, s)
 		r.Error = err
@@ -66,8 +66,8 @@ func grepFile(path string, s *model.Search) ([]string, *e.Error) {
 }
 
 //Tail tail log
-func (LocalSearch) Tail(ctx context.Context, app *model.Application) (*model.Result, *e.Error) {
-	logger.Info(ctx, "Tail logs locally")
+func (ls LocalSearch) Tail(ctx context.Context, app *model.Application) (*model.Result, *e.Error) {
+	ls.logger.Info(ctx, "Tail logs locally")
 	start := time.Now()
 	file, err := os.Open(app.Log)
 	if err != nil {
@@ -114,8 +114,8 @@ func (LocalSearch) Tail(ctx context.Context, app *model.Application) (*model.Res
 }
 
 //List list logs
-func (LocalSearch) List(ctx context.Context, host string, s *model.Search) ([]*model.LogDetails, *e.Error) {
-	logger.Info(ctx, "Local list")
+func (ls LocalSearch) List(ctx context.Context, host string, s *model.Search) ([]*model.LogDetails, *e.Error) {
+	ls.logger.Info(ctx, "Local list")
 	dirs := getDirs(s.Logs)
 	logs := make([]*model.LogDetails, 0)
 	c := make(chan []*model.LogDetails, len(dirs))
@@ -123,7 +123,7 @@ func (LocalSearch) List(ctx context.Context, host string, s *model.Search) ([]*m
 		go func(dir string) {
 			l, err := getStats(dir, host)
 			if err != nil {
-				logger.Error(ctx, err.Message)
+				ls.logger.Error(ctx, err.Message)
 				close(c)
 				return
 			}

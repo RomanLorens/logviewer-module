@@ -9,12 +9,15 @@ import (
 	"net/http"
 	"strings"
 
+	l "github.com/RomanLorens/logger/log"
 	e "github.com/RomanLorens/logviewer-module/error"
 	"github.com/RomanLorens/logviewer-module/model"
 )
 
 //RemoteSearch remote search
-type RemoteSearch struct{}
+type RemoteSearch struct {
+	logger l.Logger
+}
 
 //trust all - mostly for requests from localhost
 var (
@@ -24,11 +27,11 @@ var (
 )
 
 //Tail tail log
-func (RemoteSearch) Tail(r *http.Request, app *model.Application) (*model.Result, *e.Error) {
-	logger.Info(r.Context(), "Tail log remotely")
+func (rs RemoteSearch) Tail(r *http.Request, app *model.Application) (*model.Result, *e.Error) {
+	rs.logger.Info(r.Context(), "Tail log remotely")
 	var res *model.Result
 	url := ApiURL(app.Host, model.TailLogEndpoint)
-	body, err := CallAPI(r.Context(), url, app, r.Header)
+	body, err := CallAPI(r.Context(), url, app, r.Header, rs.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -39,17 +42,17 @@ func (RemoteSearch) Tail(r *http.Request, app *model.Application) (*model.Result
 }
 
 //DownloadLog download log
-func (RemoteSearch) DownloadLog(r *http.Request, ld *model.LogDownload) ([]byte, *e.Error) {
-	logger.Info(r.Context(), "Download log remotely")
+func (rs RemoteSearch) DownloadLog(r *http.Request, ld *model.LogDownload) ([]byte, *e.Error) {
+	rs.logger.Info(r.Context(), "Download log remotely")
 	url := ApiURL(ld.Host, model.DownloadLogEndpoint)
-	return CallAPI(r.Context(), url, ld, r.Header)
+	return CallAPI(r.Context(), url, ld, r.Header, rs.logger)
 }
 
 //Grep grep logs
-func (RemoteSearch) Grep(r *http.Request, url string, s *model.Search) ([]*model.Result, *e.Error) {
-	logger.Info(r.Context(), "Grep log remotely")
+func (rs RemoteSearch) Grep(r *http.Request, url string, s *model.Search) ([]*model.Result, *e.Error) {
+	rs.logger.Info(r.Context(), "Grep log remotely")
 	url = ApiURL(url, model.SearchEndpoint)
-	body, err := CallAPI(r.Context(), url, s, r.Header)
+	body, err := CallAPI(r.Context(), url, s, r.Header, rs.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -61,10 +64,10 @@ func (RemoteSearch) Grep(r *http.Request, url string, s *model.Search) ([]*model
 }
 
 //List list logs
-func (RemoteSearch) List(r *http.Request, url string, s *model.Search) ([]*model.LogDetails, *e.Error) {
+func (rs RemoteSearch) List(r *http.Request, url string, s *model.Search) ([]*model.LogDetails, *e.Error) {
 	var logs []*model.LogDetails
 	url = ApiURL(url, model.ListLogsEndpoint)
-	body, err := CallAPI(r.Context(), url, s, r.Header)
+	body, err := CallAPI(r.Context(), url, s, r.Header, rs.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +78,7 @@ func (RemoteSearch) List(r *http.Request, url string, s *model.Search) ([]*model
 }
 
 //CallAPI call api
-func CallAPI(ctx context.Context, url string, post interface{}, headers http.Header) ([]byte, *e.Error) {
+func CallAPI(ctx context.Context, url string, post interface{}, headers http.Header, logger l.Logger) ([]byte, *e.Error) {
 	logger.Info(ctx, "Remote api for %v", url)
 	b, err := json.Marshal(post)
 	if err != nil {

@@ -28,7 +28,7 @@ type Health struct {
 }
 
 //TailLogWS tail logs
-func TailLogWS(w http.ResponseWriter, r *http.Request) *e.Error {
+func (h Handler) TailLogWS(w http.ResponseWriter, r *http.Request) *e.Error {
 	c, er := upgrader.Upgrade(w, r, nil)
 	if er != nil {
 		return e.Errorf(500, "Could not create websocket, %v", er)
@@ -36,7 +36,7 @@ func TailLogWS(w http.ResponseWriter, r *http.Request) *e.Error {
 	ticker := time.NewTicker(5 * time.Second)
 	defer func() {
 		ticker.Stop()
-		closeWS(r.Context(), c)
+		h.closeWS(r.Context(), c)
 	}()
 	var app model.Application
 	if er := c.ReadJSON(&app); er != nil {
@@ -47,7 +47,7 @@ func TailLogWS(w http.ResponseWriter, r *http.Request) *e.Error {
 	go func(c *websocket.Conn) {
 		res, err := search.TailLog(r, &app)
 		if err != nil {
-			logger.Error(r.Context(), "Error from tail %v", err)
+			h.logger.Error(r.Context(), "Error from tail %v", err)
 			done <- true
 			return
 		}
@@ -55,10 +55,10 @@ func TailLogWS(w http.ResponseWriter, r *http.Request) *e.Error {
 		for {
 			select {
 			case <-ticker.C:
-				logger.Info(r.Context(), "Checking tail logs with ticker")
+				h.logger.Info(r.Context(), "Checking tail logs with ticker")
 				res, err := search.TailLog(r, &app)
 				if err != nil {
-					logger.Error(r.Context(), "Error from tail %v", err)
+					h.logger.Error(r.Context(), "Error from tail %v", err)
 					done <- true
 					break
 				}
@@ -70,7 +70,7 @@ func TailLogWS(w http.ResponseWriter, r *http.Request) *e.Error {
 	go func(c *websocket.Conn) {
 		_, _, err := c.ReadMessage()
 		if err != nil {
-			logger.Info(r.Context(), "Closing connection - %v", err)
+			h.logger.Info(r.Context(), "Closing connection - %v", err)
 			done <- true
 		}
 	}(c)
@@ -80,12 +80,12 @@ func TailLogWS(w http.ResponseWriter, r *http.Request) *e.Error {
 }
 
 //AppsHealth apps health
-func AppsHealth(w http.ResponseWriter, r *http.Request) *e.Error {
+func (h Handler) AppsHealth(w http.ResponseWriter, r *http.Request) *e.Error {
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return e.Errorf(500, "Could not create websocket, %v", err)
 	}
-	defer closeWS(r.Context(), c)
+	defer h.closeWS(r.Context(), c)
 
 	//TODO pass heath urls
 	/*
@@ -119,20 +119,20 @@ func AppsHealth(w http.ResponseWriter, r *http.Request) *e.Error {
 	return nil
 }
 
-func closeWS(ctx context.Context, c *websocket.Conn) {
-	logger.Info(ctx, "Closing ws connection")
+func (h Handler) closeWS(ctx context.Context, c *websocket.Conn) {
+	h.logger.Info(ctx, "Closing ws connection")
 	c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	time.Sleep(2 * time.Second)
 	c.Close()
 }
 
-func checkHealth(ctx context.Context, h *Health) {
-	logger.Info(ctx, "Checking health %v", h.Host)
-	resp, err := http.Get(h.Host)
+func (h Handler) checkHealth(ctx context.Context, health *Health) {
+	h.logger.Info(ctx, "Checking health %v", health.Host)
+	resp, err := http.Get(health.Host)
 	if err != nil {
-		logger.Error(ctx, "error from %v - %v", h.Host, err)
+		h.logger.Error(ctx, "error from %v - %v", health.Host, err)
 		return
 	}
-	logger.Info(ctx, "Response %v", resp)
-	h.Status = resp.StatusCode
+	h.logger.Info(ctx, "Response %v", resp)
+	health.Status = resp.StatusCode
 }

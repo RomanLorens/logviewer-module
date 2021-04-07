@@ -7,13 +7,11 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	l "github.com/RomanLorens/logviewer-module/logger"
+	l "github.com/RomanLorens/logger/log"
 )
 
-var logger = l.L
-
 //Forward forwards request to url
-func Forward(url string, w *http.ResponseWriter, r *http.Request) error {
+func Forward(url string, w *http.ResponseWriter, r *http.Request, logger l.Logger) error {
 	logger.Info(r.Context(), fmt.Sprintf("proxy for %v", url))
 	var body []byte
 	body, err := ioutil.ReadAll(r.Body)

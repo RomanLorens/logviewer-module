@@ -7,17 +7,25 @@ import (
 	"net/http"
 	"path"
 
+	l "github.com/RomanLorens/logger/log"
 	e "github.com/RomanLorens/logviewer-module/error"
-	l "github.com/RomanLorens/logviewer-module/logger"
 	"github.com/RomanLorens/logviewer-module/model"
 	"github.com/RomanLorens/logviewer-module/search"
 	"github.com/RomanLorens/logviewer-module/stat"
 )
 
-var logger = l.L
+//Handler handler
+type Handler struct {
+	logger l.Logger
+}
+
+//NewHandler new handler
+func NewHandler(logger l.Logger) *Handler {
+	return &Handler{logger: logger}
+}
 
 //DownloadLog download log
-func DownloadLog(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
+func (h Handler) DownloadLog(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
 	var ld model.LogDownload
 	err := json.NewDecoder(r.Body).Decode(&ld)
 	if err != nil {
@@ -36,35 +44,35 @@ func DownloadLog(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error)
 }
 
 //Stats stats
-func Stats(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
+func (h Handler) Stats(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
 	app, err := toApp(r)
 	if err != nil {
 		return nil, err
 	}
-	return stat.Get(r, app)
+	return stat.Get(r, app, h.logger)
 }
 
 //CollectStats collect stats
-func CollectStats(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
+func (h Handler) CollectStats(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
 	var s model.CollectStats
 	err := json.NewDecoder(r.Body).Decode(&s)
 	if err != nil {
 		return nil, e.ClientError("Could not parse req body, %v", err)
 	}
-	return stat.CollectStats(r.Context(), s.LogPath, s.LogStructure, s.Date)
+	return stat.CollectStats(r.Context(), s.LogPath, s.LogStructure, s.Date, h.logger)
 }
 
 //Errors errors
-func Errors(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
+func (h Handler) Errors(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
 	app, err := toApp(r)
 	if err != nil {
 		return nil, err
 	}
-	return stat.GetErrors(r, app)
+	return stat.GetErrors(r, app, h.logger)
 }
 
 //TailLog tail log
-func TailLog(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
+func (h Handler) TailLog(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
 	app, err := toApp(r)
 	if err != nil {
 		return nil, err
@@ -73,12 +81,12 @@ func TailLog(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
 }
 
 //ListLogs list logs
-func ListLogs(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
+func (h Handler) ListLogs(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
 	var s, err = toSearch(r)
 	if err != nil {
 		return nil, err
 	}
-	return search.ListLogs(r, s)
+	return search.ListLogs(r, s, h.logger)
 }
 
 func toApp(r *http.Request) (*model.Application, *e.Error) {
@@ -96,12 +104,12 @@ func toApp(r *http.Request) (*model.Application, *e.Error) {
 }
 
 //SearchHandler search
-func SearchHandler(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
+func (h Handler) SearchHandler(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
 	var s, err = toSearch(r)
 	if err != nil {
 		return nil, err
 	}
-	res, er := search.Find(r, s)
+	res, er := search.Find(r, s, h.logger)
 	return res, er
 }
 

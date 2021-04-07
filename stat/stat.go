@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	l "github.com/RomanLorens/logger/log"
 	e "github.com/RomanLorens/logviewer-module/error"
-	l "github.com/RomanLorens/logviewer-module/logger"
 	"github.com/RomanLorens/logviewer-module/model"
 	"github.com/RomanLorens/logviewer-module/search"
 )
@@ -51,22 +51,20 @@ type ErrorDetailsPagination struct {
 	Pagination   *Pagination     `json:"pagination"`
 }
 
-var logger = l.L
-
 //GetErrors get errors
-func GetErrors(r *http.Request, app *model.Application) (*ErrorDetailsPagination, *e.Error) {
+func GetErrors(r *http.Request, app *model.Application, logger l.Logger) (*ErrorDetailsPagination, *e.Error) {
 	if search.IsLocal(r, app.Host) {
 		logger.Info(r.Context(), "Getting error locally")
 		return getErrorsLocal(app.Log, app)
 	}
-	return getErrorsRemotely(r, app.Log, app)
+	return getErrorsRemotely(r, app.Log, app, logger)
 }
 
-func getErrorsRemotely(r *http.Request, log string, app *model.Application) (*ErrorDetailsPagination, *e.Error) {
+func getErrorsRemotely(r *http.Request, log string, app *model.Application, logger l.Logger) (*ErrorDetailsPagination, *e.Error) {
 	logger.Info(r.Context(), "Stats log remotely")
 	var res *ErrorDetailsPagination
 	url := search.ApiURL(app.Host, model.ErrorsEndpoint)
-	body, err := search.CallAPI(r.Context(), url, app, r.Header)
+	body, err := search.CallAPI(r.Context(), url, app, r.Header, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +132,7 @@ func getErrorsLocal(log string, app *model.Application) (*ErrorDetailsPagination
 }
 
 //Get gets stats
-func Get(r *http.Request, app *model.Application) (map[string]*Stat, *e.Error) {
+func Get(r *http.Request, app *model.Application, logger l.Logger) (map[string]*Stat, *e.Error) {
 	if search.IsLocal(r, app.Host) {
 		logger.Info(r.Context(), "Checking locally stats")
 		if app.LogStructure.Date == 0 && app.LogStructure.Level == 0 {
@@ -142,15 +140,15 @@ func Get(r *http.Request, app *model.Application) (map[string]*Stat, *e.Error) {
 		}
 		return stats(app.Log, &app.LogStructure)
 	}
-	return remoteStats(r, app)
+	return remoteStats(r, app, logger)
 
 }
 
-func remoteStats(r *http.Request, app *model.Application) (map[string]*Stat, *e.Error) {
+func remoteStats(r *http.Request, app *model.Application, logger l.Logger) (map[string]*Stat, *e.Error) {
 	logger.Info(r.Context(), "Stats log remotely")
 	var res map[string]*Stat
 	url := search.ApiURL(app.Host, model.StatsEndpoint)
-	body, err := search.CallAPI(r.Context(), url, app, r.Header)
+	body, err := search.CallAPI(r.Context(), url, app, r.Header, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +180,7 @@ func getFilesByPattern(log string) ([]string, *e.Error) {
 }
 
 //CollectStats collects stats
-func CollectStats(ctx context.Context, log string, ls *model.LogStructure, date string) (*model.CollectStatsMongo, *e.Error) {
+func CollectStats(ctx context.Context, log string, ls *model.LogStructure, date string, logger l.Logger) (*model.CollectStatsMongo, *e.Error) {
 	paths, err := getFilesByPattern(log)
 	if err != nil {
 		return nil, err

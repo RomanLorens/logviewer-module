@@ -6,14 +6,12 @@ import (
 	"os"
 	"runtime/debug"
 
+	l "github.com/RomanLorens/logger/log"
 	e "github.com/RomanLorens/logviewer-module/error"
-	l "github.com/RomanLorens/logviewer-module/logger"
 )
 
-var logger = l.L
-
 //CatchError recovers from panic
-func CatchError(ctx context.Context) {
+func CatchError(ctx context.Context, logger l.Logger) {
 	if r := recover(); r != nil {
 		m := fmt.Sprintf("Panic recovered: '%v'\n%v", r, string(debug.Stack()))
 		if ctx != nil {

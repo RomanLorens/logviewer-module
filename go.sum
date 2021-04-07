@@ -1,7 +1,7 @@
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/RomanLorens/logger v0.1.0 h1:ITePc1Rq+LsWcjjEjN9MwcpQX7yr3mHzF2QNeXEQcL8=
-github.com/RomanLorens/logger v0.1.0/go.mod h1:jhRJlKh2ScFvIsNxyjTbqIlHecgtKqmxBDC+NmZYYqk=
+github.com/RomanLorens/logger v0.1.2 h1:wkndrXS6ckR9Xq+Y3okhPaDBuKQJnK1kNkjQErNR4fY=
+github.com/RomanLorens/logger v0.1.2/go.mod h1:jhRJlKh2ScFvIsNxyjTbqIlHecgtKqmxBDC+NmZYYqk=
 github.com/gorilla/websocket v1.4.2 h1:+/TMaTYc4QFitKJxsQ7Yye35DkWvkdLcvGKqM+x0Ufc=
 github.com/gorilla/websocket v1.4.2/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=

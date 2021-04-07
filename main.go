@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	l "github.com/RomanLorens/logger/log"
 	e "github.com/RomanLorens/logviewer-module/error"
 	h "github.com/RomanLorens/logviewer-module/handler"
 	"github.com/RomanLorens/logviewer-module/model"
@@ -29,12 +30,13 @@ func main() {
 
 	return
 	http.HandleFunc("/", root)
-	register("/lv/health", h.HealthHandler)
-	register("/lv/"+model.SearchEndpoint, h.SearchHandler)
-	register("/lv/"+model.ListLogsEndpoint, h.ListLogs)
-	register("/lv/"+model.StatsEndpoint, h.Stats)
-	register("/lv/"+model.ErrorsEndpoint, h.Errors)
-	register("/lv/support/proxy", h.ProxyHandler)
+	handler := h.NewHandler(l.PrintLogger(false))
+	register("/lv/health", handler.HealthHandler)
+	register("/lv/"+model.SearchEndpoint, handler.SearchHandler)
+	register("/lv/"+model.ListLogsEndpoint, handler.ListLogs)
+	register("/lv/"+model.StatsEndpoint, handler.Stats)
+	register("/lv/"+model.ErrorsEndpoint, handler.Errors)
+	register("/lv/support/proxy", handler.ProxyHandler)
 
 	/*
 		task := scheduler.Task{Name: "stats collector",

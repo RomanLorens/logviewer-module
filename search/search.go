@@ -1,24 +1,16 @@
 package search
 
 import (
-	"context"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
 
+	l "github.com/RomanLorens/logger/log"
 	e "github.com/RomanLorens/logviewer-module/error"
 	"github.com/RomanLorens/logviewer-module/model"
 	"github.com/RomanLorens/logviewer-module/utils"
 )
-
-//LogSearch available log actions
-type LogSearch interface {
-	Tail(ctx context.Context, app *model.Application) (*model.Result, *e.Error)
-	Grep(ctx context.Context, host string, s *model.Search) []*model.Result
-	List(ctx context.Context, url string, s *model.Search) ([]*model.LogDetails, *e.Error)
-	DownloadLog(ctx context.Context, req *model.LogDownload) ([]byte, *e.Error)
-}
 
 var (
 	tailSizeKB = 16
@@ -46,7 +38,7 @@ func TailLog(r *http.Request, app *model.Application) (*model.Result, *e.Error) 
 }
 
 //Find find logs
-func Find(r *http.Request, s *model.Search) ([]*model.Result, *e.Error) {
+func Find(r *http.Request, s *model.Search, logger l.Logger) ([]*model.Result, *e.Error) {
 	if err := validate(s); err != nil {
 		return nil, err
 	}
@@ -80,7 +72,7 @@ func Find(r *http.Request, s *model.Search) ([]*model.Result, *e.Error) {
 }
 
 //ListLogs list logs for app
-func ListLogs(r *http.Request, s *model.Search) ([]*model.LogDetails, *e.Error) {
+func ListLogs(r *http.Request, s *model.Search, logger l.Logger) ([]*model.LogDetails, *e.Error) {
 	logs := make([]*model.LogDetails, 0)
 	hc := make(chan string, len(s.Hosts))
 	for _, h := range s.Hosts {
@@ -110,7 +102,7 @@ func ListLogs(r *http.Request, s *model.Search) ([]*model.LogDetails, *e.Error) 
 func IsLocal(r *http.Request, url string) bool {
 	hostname, err := utils.Hostname()
 	if err != nil {
-		logger.Error(r.Context(), "Could not resolve hostname - defaults to local host, %v", err)
+		l.PrintLogger(false).Error(r.Context(), "Could not resolve hostname - defaults to local host, %v", err)
 		return true
 	}
 	return strings.Contains(strings.ToLower(url), strings.ToLower(hostname))
