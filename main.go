@@ -28,6 +28,7 @@ func main() {
 
 	http.HandleFunc("/", root)
 	handler := h.NewHandler(l.PrintLogger(false))
+	register("/lv/memory", handler.MemoryDiagnostics)
 	register("/lv/health", handler.HealthHandler)
 	register("/lv/"+model.SearchEndpoint, handler.SearchHandler)
 	register("/lv/"+model.ListLogsEndpoint, handler.ListLogs)
