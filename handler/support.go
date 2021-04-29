@@ -10,12 +10,11 @@ import (
 )
 
 type memory struct {
-	Allocated      string
-	TotalAllocated string
-	System         string
-	CPU            int
-	Threads        int
-	Raw            *runtime.MemStats
+	Allocated string
+	System    string
+	CPU       int
+	Threads   int
+	Raw       *runtime.MemStats
 }
 
 //HealthHandler health
@@ -37,11 +36,10 @@ func (h Handler) MemoryDiagnostics(w http.ResponseWriter, r *http.Request) (inte
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	return &memory{Allocated: convertBytes(m.Alloc),
-		TotalAllocated: convertBytes(m.TotalAlloc),
-		System:         convertBytes(m.Sys),
-		CPU:            runtime.NumCPU(),
-		Threads:        runtime.NumGoroutine(),
-		Raw:            &m}, nil
+		System:  convertBytes(m.Sys),
+		CPU:     runtime.NumCPU(),
+		Threads: runtime.NumGoroutine(),
+		Raw:     &m}, nil
 }
 
 func convertBytes(b uint64) string {
