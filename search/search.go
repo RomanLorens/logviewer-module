@@ -1,131 +1,185 @@
 package search
 
 import (
-	"net/http"
+	"bufio"
+	"context"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
 	l "github.com/RomanLorens/logger/log"
-	e "github.com/RomanLorens/logviewer-module/error"
 	"github.com/RomanLorens/logviewer-module/model"
 	"github.com/RomanLorens/logviewer-module/utils"
 )
 
-var (
-	tailSizeKB = 16
-)
+var tailSizeKB = 16
 
-//Search search
-type Search struct {
-	logger l.Logger
-	ls     *LocalSearch
-	rs     *RemoteSearch
-}
-
-func NewSearch(logger l.Logger) *Search {
-	return &Search{logger: logger, ls: &LocalSearch{logger: logger}, rs: &RemoteSearch{logger: logger}}
-}
-
-//DownloadLog download log
-func (s Search) DownloadLog(r *http.Request, lg *model.LogDownload) ([]byte, *e.Error) {
-	if lg.Host == "" || lg.Log == "" {
-		return nil, e.Errorf(400, "Payload is missing host and/or log values")
+//Grep grep logs
+func Grep(ctx context.Context, req *model.GrepRequest, logger l.Logger) []model.GrepResponse {
+	out := make([]model.GrepResponse, 0, len(req.Logs))
+	for _, l := range req.Logs {
+		logger.Info(ctx, "Local grep for %v - '%v'", l, req.Value)
+		r := model.GrepResponse{LogFile: l}
+		lines, err := grepFile(l, req.Value)
+		if err != nil {
+			logger.Error(ctx, "Could not grep %v, %v", l, err)
+			continue
+		}
+		r.Lines = lines
+		out = append(out, r)
 	}
-	if IsLocal(r, lg.Host) {
-		return s.ls.DownloadLog(r.Context(), lg)
-	}
-	return s.rs.DownloadLog(r, lg)
+	return out
 }
 
-//TailLog tail log
-func (s Search) TailLog(r *http.Request, app *model.Application) (*model.Result, *e.Error) {
-	if IsLocal(r, app.Host) {
-		return s.ls.Tail(r.Context(), app)
-	}
-	return s.rs.Tail(r, app)
-}
-
-//Find find logs
-func (se Search) Find(r *http.Request, s *model.Search, logger l.Logger) ([]*model.Result, *e.Error) {
-	if err := validate(s); err != nil {
+//DownloadLog read file
+func DownloadLog(log string) ([]byte, error) {
+	b, err := ioutil.ReadFile(log)
+	if err != nil {
 		return nil, err
 	}
-	out := make(chan []*model.Result, len(s.Hosts))
-	for _, host := range s.Hosts {
-		go func(host string) {
-			logger.Info(r.Context(), "starting grep goroutine for %v", host)
-			start := time.Now()
-			local := IsLocal(r, host)
-			var res []*model.Result
-			if local {
-				res = se.ls.Grep(r.Context(), host, s)
-			} else {
-				r, err := se.rs.Grep(r, host, s)
-				if err != nil {
-					res = append(res, &model.Result{Error: err, Time: 0})
-				} else {
-					res = append(res, r...)
-				}
-			}
-			end := time.Now()
-			elapsed := end.Sub(start)
-			for _, r := range res {
-				r.Time = elapsed.Milliseconds()
-			}
-			logger.Info(r.Context(), "goroutine for %v finished", host)
-			out <- res
-		}(host)
-	}
-	return <-out, nil
+	return b, nil
 }
 
-//ListLogs list logs for app
-func (se Search) ListLogs(r *http.Request, s *model.Search, logger l.Logger) ([]*model.LogDetails, *e.Error) {
-	logs := make([]*model.LogDetails, 0)
-	hc := make(chan string, len(s.Hosts))
-	for _, h := range s.Hosts {
-		go func(host string) {
-			logger.Info(r.Context(), "host routine for %v started...", host)
-			if IsLocal(r, host) {
-				l, _ := se.ls.List(r.Context(), host, s) //no error for local
-				logs = append(logs, l...)
-			} else {
-				l, err := se.rs.List(r, host, s)
-				if err == nil {
-					logs = append(logs, l...)
-				} else {
-					logger.Error(r.Context(), "Error from api, %v", err)
-				}
-			}
-			hc <- host
-			logger.Info(r.Context(), "host routine for %v finsihed", host)
-		}(h)
+func grepFile(path string, value string) ([]string, error) {
+	out := make([]string, 0, 20)
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
 	}
-	<-hc //wait for all threads
-	sort.Slice(logs, func(i, j int) bool { return logs[i].ModTime > logs[j].ModTime })
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	val := strings.ToLower(value)
+	for scanner.Scan() {
+		if strings.Contains(strings.ToLower(scanner.Text()), val) {
+			out = append(out, NormalizeText(scanner.Text()))
+		}
+	}
+	if err = scanner.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+//Tail tail log
+func Tail(log string) (*model.TailLogResponse, error) {
+	start := time.Now()
+	file, err := os.Open(log)
+	if err != nil {
+		return nil, fmt.Errorf("Could not open file %v", err)
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("Could not stat file %v", err)
+	}
+
+	offset := info.Size() - int64(tailSizeKB*1024)
+	if offset < 0 {
+		offset = 0
+	}
+	bytes := make([]byte, info.Size()-offset)
+
+	_, err = file.ReadAt(bytes, offset)
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("Could not stat file %v", err)
+	}
+
+	//start from new line
+	for i, b := range bytes {
+		if b == '\n' {
+			bytes = bytes[i:]
+			break
+		}
+	}
+
+	lines := make([]string, 0, 100)
+	for _, l := range strings.Split(string(bytes), "\n") {
+		l = NormalizeText(l)
+		if strings.TrimSpace(l) != "" {
+			lines = append(lines, NormalizeText(l))
+		}
+	}
+	return &model.TailLogResponse{
+		Lines:   lines,
+		Time:    time.Now().Sub(start).Milliseconds(),
+		LogFile: log,
+	}, nil
+}
+
+//ListLogs list logs
+func ListLogs(ctx context.Context, logs []string, logger l.Logger) []model.LogDetails {
+	dirs := getDirs(logs)
+	res := make([]model.LogDetails, 0, len(logs))
+	c := make(chan []model.LogDetails, len(dirs))
+	for _, dir := range dirs {
+		go func(dir string) {
+			utils.CatchError(ctx, logger)
+			l, err := getStats(dir)
+			if err != nil {
+				logger.Error(ctx, err.Error())
+				close(c)
+				return
+			}
+			c <- l
+		}(dir)
+	}
+	for i := 0; i < len(dirs); i++ {
+		res = append(res, <-c...)
+	}
+	sort.SliceStable(res, func(i int, j int) bool {
+		return res[i].ModTime > res[j].ModTime
+	})
+	return res
+}
+
+func getDirs(paths []string) []string {
+	out := make([]string, 0, len(paths))
+	m := make(map[string]bool, len(paths))
+	for _, p := range paths {
+		dir := filepath.Dir(p)
+		if _, ok := m[dir]; !ok {
+			m[dir] = true
+			out = append(out, dir)
+		}
+	}
+	return out
+}
+
+func getStats(dir string) ([]model.LogDetails, error) {
+	logs := make([]model.LogDetails, 0)
+	info, err := os.Stat(dir)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("not dir %v", dir)
+	}
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range files {
+		if !file.IsDir() {
+			logs = append(logs, model.LogDetails{
+				ModTime: file.ModTime().Unix(),
+				Name:    filepath.Join(dir, file.Name()),
+				Size:    file.Size(),
+			})
+		}
+	}
+
 	return logs, nil
 }
 
-//IsLocal is local request
-func IsLocal(r *http.Request, url string) bool {
-	hostname, err := utils.Hostname()
-	if err != nil {
-		l.PrintLogger(false).Error(r.Context(), "Could not resolve hostname - defaults to local host, %v", err)
-		return true
-	}
-	return strings.Contains(strings.ToLower(url), strings.ToLower(hostname))
-}
-
-func validate(s *model.Search) *e.Error {
-	if strings.TrimSpace(s.Value) == "" {
-		return e.Errorf(http.StatusBadRequest, "Missing value")
-	}
-	if len(s.Hosts) == 0 {
-		return e.Errorf(http.StatusBadRequest, "Missing hosts")
-	}
-	if len(s.Logs) == 0 {
-		return e.Errorf(http.StatusBadRequest, "Missing logs")
-	}
-	return nil
+//NormalizeText normalize level
+func NormalizeText(t string) string {
+	t = strings.ReplaceAll(t, "\033[0;31mERROR\033[0m", "ERROR")
+	t = strings.ReplaceAll(t, "\033[0;33mWARNING\033[0m", "WARNING")
+	t = strings.ReplaceAll(t, "\033[0;32mINFO\033[0m", "INFO")
+	return t
 }

@@ -1,18 +1,55 @@
 package model
 
-import (
-	e "github.com/RomanLorens/logviewer-module/error"
-)
+//GrepRequest req
+type GrepRequest struct {
+	Value string   `json:"value"`
+	Logs  []string `json:"logs"`
+}
 
-//Application application
-type Application struct {
-	ApplicationID string       `json:"application"`
-	Env           string       `json:"env"`
-	Log           string       `json:"log"`
-	Host          string       `json:"host"`
-	From          int          `json:"from"`
-	Size          int          `json:"size"`
-	LogStructure  LogStructure `json:"logStructure"`
+//GrepResponse search result
+type GrepResponse struct {
+	LogFile string   `json:"logfile"`
+	Lines   []string `json:"lines"`
+	Host    string   `json:"host"`
+	Time    int64    `json:"time"`
+}
+
+//ListLogsRequest list logs
+type ListLogsRequest struct {
+	Logs []string `json:"logs"`
+}
+
+//LogRequest log req
+type LogRequest struct {
+	Log string `json:"log"`
+}
+
+//ReqID req id
+type ReqID struct {
+	ReqID string `json:"reqid"`
+	Date  string `json:"date"`
+}
+
+//Stat stats
+type Stat struct {
+	LastTime string         `json:"lastTime"`
+	Counter  int            `json:"counter"`
+	Levels   map[string]int `json:"levels"`
+	Errors   []ReqID        `json:"errors"`
+	Warnings []ReqID        `json:"warnings"`
+}
+
+//StatsRequest stats req
+type StatsRequest struct {
+	Log          string        `json:"log"`
+	LogStructure *LogStructure `json:"logStructure"`
+}
+
+//ErrorsRequest errors req
+type ErrorsRequest struct {
+	From int `json:"from"`
+	Size int `json:"size"`
+	*StatsRequest
 }
 
 //Search search
@@ -26,12 +63,11 @@ type Search struct {
 	Hosts         []string `json:"hosts"`
 }
 
-//Result search result
-type Result struct {
+//TailLogResponse res
+type TailLogResponse struct {
 	LogFile string   `json:"logfile"`
 	Lines   []string `json:"lines"`
 	Host    string   `json:"host"`
-	Error   *e.Error `json:"error,omitempty"`
 	Time    int64    `json:"time"`
 }
 
@@ -49,25 +85,46 @@ type LogDownload struct {
 	Log  string `json:"log"`
 }
 
+//ErrorDetails error details
+type ErrorDetails struct {
+	ReqID
+	User    string `json:"user"`
+	Level   string `json:"level"`
+	Message string `json:"message"`
+}
+
+//Pagination pagination
+type Pagination struct {
+	Total int `json:"total"`
+	From  int `json:"from"`
+	Size  int `json:"size"`
+}
+
+//ErrorDetailsPagination details with pagination
+type ErrorDetailsPagination struct {
+	ErrorDetails []ErrorDetails `json:"errors"`
+	Pagination   *Pagination    `json:"pagination"`
+}
+
 //LogStructure log structure
 type LogStructure struct {
-	Date       int    `json:"date"`
-	User       int    `json:"user"`
-	Reqid      int    `json:"reqid"`
-	Level      int    `json:"level"`
-	Message    int    `json:"message"`
-	DateFormat string `json:"dateFormat"`
+	Date           int    `json:"date"`
+	User           int    `json:"user"`
+	Reqid          int    `json:"reqid"`
+	Level          int    `json:"level"`
+	Message        int    `json:"message"`
+	DateFormat     string `json:"dateFormat"`
+	JavaDateFormat string `json:"javaDateFormat"`
 }
 
-//CollectStats collect stats
-type CollectStats struct {
-	LogPath      string        `json:"logPath"`
-	LogStructure *LogStructure `json:"logStructure"`
-	Date         string        `date:"date"`
+//CollectStatsRequest collect stats
+type CollectStatsRequest struct {
+	*StatsRequest
+	Date string `json:"date"`
 }
 
-//CollectStatsMongo collect stats mongo
-type CollectStatsMongo struct {
+//CollectStatsRsults collect stats results
+type CollectStatsRsults struct {
 	Users         map[string]map[string]int `json:"users"`
 	TotalRequests int32                     `json:"totalRequests"`
 }

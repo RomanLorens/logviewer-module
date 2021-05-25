@@ -2,10 +2,10 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
-	e "github.com/RomanLorens/logviewer-module/error"
 	"github.com/RomanLorens/logviewer-module/model"
 	"github.com/RomanLorens/logviewer-module/search"
 	"github.com/gorilla/websocket"
@@ -28,25 +28,24 @@ type Health struct {
 }
 
 //TailLogWS tail logs
-func (h Handler) TailLogWS(w http.ResponseWriter, r *http.Request) *e.Error {
+func (h Handler) TailLogWS(w http.ResponseWriter, r *http.Request) error {
 	c, er := upgrader.Upgrade(w, r, nil)
 	if er != nil {
-		return e.Errorf(500, "Could not create websocket, %v", er)
+		return fmt.Errorf("Could not create websocket, %v", er)
 	}
 	ticker := time.NewTicker(5 * time.Second)
 	defer func() {
 		ticker.Stop()
 		h.closeWS(r.Context(), c)
 	}()
-	var app model.Application
-	if er := c.ReadJSON(&app); er != nil {
-		return e.Errorf(400, "Could not parse incoming request, %v", er)
+	var lr model.LogRequest
+	if er := c.ReadJSON(&lr); er != nil {
+		return fmt.Errorf("Could not parse incoming request, %v", er)
 	}
 
 	done := make(chan bool)
 	go func(c *websocket.Conn) {
-		s := search.NewSearch(h.logger)
-		res, err := s.TailLog(r, &app)
+		res, err := search.Tail(lr.Log)
 		if err != nil {
 			h.logger.Error(r.Context(), "Error from tail %v", err)
 			done <- true
@@ -57,7 +56,7 @@ func (h Handler) TailLogWS(w http.ResponseWriter, r *http.Request) *e.Error {
 			select {
 			case <-ticker.C:
 				h.logger.Info(r.Context(), "Checking tail logs with ticker")
-				res, err := s.TailLog(r, &app)
+				res, err := search.Tail(lr.Log)
 				if err != nil {
 					h.logger.Error(r.Context(), "Error from tail %v", err)
 					done <- true
@@ -81,10 +80,10 @@ func (h Handler) TailLogWS(w http.ResponseWriter, r *http.Request) *e.Error {
 }
 
 //AppsHealth apps health
-func (h Handler) AppsHealth(w http.ResponseWriter, r *http.Request) *e.Error {
+func (h Handler) AppsHealth(w http.ResponseWriter, r *http.Request) error {
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		return e.Errorf(500, "Could not create websocket, %v", err)
+		return fmt.Errorf("Could not create websocket, %v", err)
 	}
 	defer h.closeWS(r.Context(), c)
 

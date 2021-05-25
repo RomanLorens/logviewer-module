@@ -3,87 +3,27 @@ package stat
 import (
 	"bufio"
 	"context"
-	"encoding/json"
-	"net/http"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	l "github.com/RomanLorens/logger/log"
-	e "github.com/RomanLorens/logviewer-module/error"
 	"github.com/RomanLorens/logviewer-module/model"
 	"github.com/RomanLorens/logviewer-module/search"
 )
 
-//ReqID req id
-type ReqID struct {
-	ReqID string `json:"reqid"`
-	Date  string `json:"date"`
-}
-
-//Stat stats
-type Stat struct {
-	LastTime string         `json:"lastTime"`
-	Counter  int            `json:"counter"`
-	Levels   map[string]int `json:"levels"`
-	Errors   []*ReqID       `json:"errors"`
-	Warnings []*ReqID       `json:"warnings"`
-}
-
-//ErrorDetails error details
-type ErrorDetails struct {
-	ReqID
-	User    string `json:"user"`
-	Level   string `json:"level"`
-	Message string `json:"message"`
-}
-
-//Pagination pagination
-type Pagination struct {
-	Total int `json:"total"`
-	From  int `json:"from"`
-	Size  int `json:"size"`
-}
-
-//ErrorDetailsPagination details with pagination
-type ErrorDetailsPagination struct {
-	ErrorDetails []*ErrorDetails `json:"errors"`
-	Pagination   *Pagination     `json:"pagination"`
-}
-
-//GetErrors get errors
-func GetErrors(r *http.Request, app *model.Application, logger l.Logger) (*ErrorDetailsPagination, *e.Error) {
-	if search.IsLocal(r, app.Host) {
-		logger.Info(r.Context(), "Getting error locally")
-		return getErrorsLocal(app.Log, app)
-	}
-	return getErrorsRemotely(r, app.Log, app, logger)
-}
-
-func getErrorsRemotely(r *http.Request, log string, app *model.Application, logger l.Logger) (*ErrorDetailsPagination, *e.Error) {
-	logger.Info(r.Context(), "Stats log remotely")
-	var res *ErrorDetailsPagination
-	url := search.ApiURL(app.Host, model.ErrorsEndpoint)
-	body, err := search.CallAPI(r.Context(), url, app, r.Header, logger)
+//Errors errors
+func Errors(req *model.ErrorsRequest) (*model.ErrorDetailsPagination, error) {
+	file, err := os.Open(req.Log)
 	if err != nil {
-		return nil, err
-	}
-	if er := json.Unmarshal(body, &res); er != nil {
-		return nil, e.Errorf(500, "Could not read unmarshal, %v", er)
-	}
-	return res, nil
-}
-
-func getErrorsLocal(log string, app *model.Application) (*ErrorDetailsPagination, *e.Error) {
-	file, err := os.Open(log)
-	if err != nil {
-		return nil, e.Errorf(500, "Could not open log file, %v", err)
+		return nil, fmt.Errorf("Could not open log file, %v", err)
 	}
 	defer file.Close()
-	res := make([]*ErrorDetails, 0, 100)
+	res := make([]model.ErrorDetails, 0, 100)
 	requests := make(map[string]int, 0)
 	scanner := bufio.NewScanner(file)
-	ls := &app.LogStructure
+	ls := req.LogStructure
 	maxTokens := max(ls)
 	for scanner.Scan() {
 		tokens := strings.Split(scanner.Text(), "|")
@@ -99,8 +39,8 @@ func getErrorsLocal(log string, app *model.Application) (*ErrorDetailsPagination
 			continue
 		}
 
-		res = append(res, &ErrorDetails{
-			ReqID:   ReqID{tokens[ls.Reqid], tokens[ls.Date]},
+		res = append(res, model.ErrorDetails{
+			ReqID:   model.ReqID{ReqID: tokens[ls.Reqid], Date: tokens[ls.Date]},
 			Level:   level,
 			Message: tokens[ls.Message],
 			User:    tokens[ls.User],
@@ -108,64 +48,37 @@ func getErrorsLocal(log string, app *model.Application) (*ErrorDetailsPagination
 
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, e.Errorf(500, "Error from scanner, %v", err)
+		return nil, fmt.Errorf("Error from scanner, %v", err)
 	}
 
 	for i, j := 0, len(res)-1; i < j; i, j = i+1, j-1 {
 		res[i], res[j] = res[j], res[i]
 	}
 
-	pagination := &Pagination{
-		From:  app.From,
-		Size:  app.Size,
+	pagination := &model.Pagination{
+		From:  req.From,
+		Size:  req.Size,
 		Total: len(res),
 	}
-	start := app.From * app.Size
-	end := (app.From * app.Size) + app.Size
+	start := req.From * req.Size
+	end := (req.From * req.Size) + req.Size
 	if end >= len(res) {
 		end = len(res)
 	}
 	if start >= end {
-		return &ErrorDetailsPagination{[]*ErrorDetails{}, pagination}, nil
+		return &model.ErrorDetailsPagination{ErrorDetails: []model.ErrorDetails{}, Pagination: pagination}, nil
 	}
-	return &ErrorDetailsPagination{res[start:end], pagination}, nil
+	return &model.ErrorDetailsPagination{ErrorDetails: res[start:end], Pagination: pagination}, nil
 }
 
-//Get gets stats
-func Get(r *http.Request, app *model.Application, logger l.Logger) (map[string]*Stat, *e.Error) {
-	if search.IsLocal(r, app.Host) {
-		logger.Info(r.Context(), "Checking locally stats")
-		if app.LogStructure.Date == 0 && app.LogStructure.Level == 0 {
-			return nil, e.ClientError("Must pass log structure - was empty %v", app.LogStructure)
-		}
-		return stats(app.Log, &app.LogStructure)
-	}
-	return remoteStats(r, app, logger)
-
-}
-
-func remoteStats(r *http.Request, app *model.Application, logger l.Logger) (map[string]*Stat, *e.Error) {
-	logger.Info(r.Context(), "Stats log remotely")
-	var res map[string]*Stat
-	url := search.ApiURL(app.Host, model.StatsEndpoint)
-	body, err := search.CallAPI(r.Context(), url, app, r.Header, logger)
-	if err != nil {
-		return nil, err
-	}
-	if er := json.Unmarshal(body, &res); er != nil {
-		return nil, e.Errorf(500, "Could not read unmarshal, %v", er)
-	}
-	return res, nil
-}
-
-func getFilesByPattern(log string) ([]string, *e.Error) {
+func getFilesByPattern(log string) ([]string, error) {
 	dir := filepath.Dir(log)
 	info, err := os.Stat(dir)
 	if err != nil {
-		return nil, e.ClientError("Could not open dir %v, %v", dir, err)
+		return nil, fmt.Errorf("Could not open dir %v, %v", dir, err)
 	}
 	if !info.IsDir() {
-		return nil, e.ClientError("%v is not dir, %v", dir, info)
+		return nil, fmt.Errorf("%v is not dir, %v", dir, info)
 	}
 	pattern := strings.Replace(filepath.Base(log), ".log", "", 1)
 	paths := make([]string, 0, 1)
@@ -180,22 +93,22 @@ func getFilesByPattern(log string) ([]string, *e.Error) {
 }
 
 //CollectStats collects stats
-func CollectStats(ctx context.Context, log string, ls *model.LogStructure, date string, logger l.Logger) (*model.CollectStatsMongo, *e.Error) {
-	paths, err := getFilesByPattern(log)
+func CollectStats(ctx context.Context, req *model.CollectStatsRequest, logger l.Logger) (*model.CollectStatsRsults, error) {
+	paths, err := getFilesByPattern(req.Log)
 	if err != nil {
 		return nil, err
 	}
-	logger.Info(ctx, "collect stats for paths %v and mod date %v", paths, date)
+	logger.Info(ctx, "collect stats for paths %v and mod date %v", paths, req.Date)
 	//user -> level -> counter
 	m := make(map[string]map[string]int)
 	requests := make(map[string]int, 0)
 	for _, p := range paths {
 		file, err := os.Open(p)
 		if err != nil {
-			return nil, e.AppError("Could not open log file, %v", err)
+			return nil, fmt.Errorf("Could not open log file, %v", err)
 		}
 		defer file.Close()
-
+		ls := req.LogStructure
 		maxTokens := max(ls)
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
@@ -203,7 +116,7 @@ func CollectStats(ctx context.Context, log string, ls *model.LogStructure, date 
 			if len(tokens) < maxTokens {
 				continue
 			}
-			if !strings.Contains(tokens[ls.Date], date) {
+			if !strings.Contains(tokens[ls.Date], req.Date) {
 				continue
 			}
 			user := tokens[ls.User]
@@ -224,19 +137,20 @@ func CollectStats(ctx context.Context, log string, ls *model.LogStructure, date 
 			u[level]++
 		}
 		if err := scanner.Err(); err != nil {
-			return nil, e.AppError("Error from scanner, %v", err)
+			return nil, fmt.Errorf("Error from scanner, %v", err)
 		}
 	}
 
-	return &model.CollectStatsMongo{Users: m, TotalRequests: int32(len(requests))}, nil
+	return &model.CollectStatsRsults{Users: m, TotalRequests: int32(len(requests))}, nil
 }
 
-func stats(log string, ls *model.LogStructure) (map[string]*Stat, *e.Error) {
-	out := make(map[string]*Stat, 0)
+//Stats stats
+func Stats(log string, ls *model.LogStructure) (map[string]*model.Stat, error) {
+	out := make(map[string]*model.Stat)
 	requests := make(map[string]int, 0)
 	file, err := os.Open(log)
 	if err != nil {
-		return nil, e.Errorf(500, "Could not open log file, %v", err)
+		return nil, fmt.Errorf("Could not open log file, %v", err)
 	}
 	defer file.Close()
 
@@ -253,7 +167,7 @@ func stats(log string, ls *model.LogStructure) (map[string]*Stat, *e.Error) {
 		}
 		u, ok := out[user]
 		if !ok {
-			u = &Stat{
+			u = &model.Stat{
 				Levels: make(map[string]int, 0),
 			}
 			out[user] = u
@@ -268,18 +182,16 @@ func stats(log string, ls *model.LogStructure) (map[string]*Stat, *e.Error) {
 		u.Counter++
 		u.Levels[level]++
 		if level == "ERROR" {
-			u.Errors = append(u.Errors, &ReqID{
-				tokens[ls.Reqid], tokens[ls.Date],
-			})
+			u.Errors = append(u.Errors, model.ReqID{ReqID: tokens[ls.Reqid], Date: tokens[ls.Date]})
 		}
 		if level == "WARNING" || level == "WARN" {
-			u.Warnings = append(u.Warnings, &ReqID{
-				tokens[ls.Reqid], tokens[ls.Date],
+			u.Warnings = append(u.Warnings, model.ReqID{
+				ReqID: tokens[ls.Reqid], Date: tokens[ls.Date],
 			})
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, e.Errorf(500, "Error from scanner, %v", err)
+		return nil, fmt.Errorf("Error from scanner, %v", err)
 	}
 	for _, v := range out {
 		for i, j := 0, len(v.Errors)-1; i < j; i, j = i+1, j-1 {
@@ -289,6 +201,7 @@ func stats(log string, ls *model.LogStructure) (map[string]*Stat, *e.Error) {
 			v.Warnings[i], v.Warnings[j] = v.Warnings[j], v.Warnings[i]
 		}
 	}
+
 	return out, nil
 }
 

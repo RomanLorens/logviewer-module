@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"runtime"
 
-	e "github.com/RomanLorens/logviewer-module/error"
 	"github.com/RomanLorens/logviewer-module/proxy"
 )
 
@@ -18,21 +17,21 @@ type memory struct {
 }
 
 //HealthHandler health
-func (h Handler) HealthHandler(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
+func (h Handler) HealthHandler(w http.ResponseWriter, r *http.Request) (interface{}, error) {
 	return "OK", nil
 }
 
 //ProxyHandler proxy
-func (h Handler) ProxyHandler(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
+func (h Handler) ProxyHandler(w http.ResponseWriter, r *http.Request) (interface{}, error) {
 	err := proxy.Forward(r.FormValue("url"), &w, r, h.logger)
 	if err != nil {
-		return nil, e.AppError("proxy error, %v", err)
+		return nil, fmt.Errorf("proxy error, %v", err)
 	}
 	return nil, nil
 }
 
 //MemoryDiagnostics memory diagnostics
-func (h Handler) MemoryDiagnostics(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
+func (h Handler) MemoryDiagnostics(w http.ResponseWriter, r *http.Request) (interface{}, error) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	return &memory{Allocated: convertBytes(m.Alloc),

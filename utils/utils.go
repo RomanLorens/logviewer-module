@@ -2,12 +2,12 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"runtime/debug"
 
 	l "github.com/RomanLorens/logger/log"
-	e "github.com/RomanLorens/logviewer-module/error"
 )
 
 //CatchError recovers from panic
@@ -23,12 +23,12 @@ func CatchError(ctx context.Context, logger l.Logger) {
 }
 
 //Hostname gets hostname from unix box or hostname env
-func Hostname() (string, *e.Error) {
+func Hostname() (string, error) {
 	h, _ := os.Hostname()
 	if h == "" {
 		h = os.Getenv("hostname")
 		if h == "" {
-			return "", e.AppError("Could not resolve hostname")
+			return "", errors.New("Could not resolve hostname")
 		}
 	}
 	return h, nil

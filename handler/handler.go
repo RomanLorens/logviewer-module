@@ -3,12 +3,10 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"path"
 
 	l "github.com/RomanLorens/logger/log"
-	e "github.com/RomanLorens/logviewer-module/error"
 	"github.com/RomanLorens/logviewer-module/model"
 	"github.com/RomanLorens/logviewer-module/search"
 	"github.com/RomanLorens/logviewer-module/stat"
@@ -17,113 +15,89 @@ import (
 //Handler handler
 type Handler struct {
 	logger l.Logger
-	search *search.Search
 }
 
 //NewHandler new handler
 func NewHandler(logger l.Logger) *Handler {
-	return &Handler{logger: logger, search: search.NewSearch(logger)}
+	return &Handler{logger: logger}
 }
 
 //DownloadLog download log
-func (h Handler) DownloadLog(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
-	var ld model.LogDownload
-	err := json.NewDecoder(r.Body).Decode(&ld)
+func (h Handler) DownloadLog(w http.ResponseWriter, r *http.Request) (interface{}, error) {
+	var lr model.LogRequest
+	err := json.NewDecoder(r.Body).Decode(&lr)
 	if err != nil {
-		return nil, e.AppError("missing log download body, %w", err)
+		return nil, fmt.Errorf("missing log download body, %w", err)
 	}
 	defer r.Body.Close()
-	b, er := h.search.DownloadLog(r, &ld)
+	b, er := search.DownloadLog(lr.Log)
 	if er != nil {
-		return nil, e.AppError("download log,%w", err)
+		return nil, err
 	}
 
 	w.Header().Add("Content-Type", "application/octet-stream")
-	w.Header().Add("Content-Disposition", fmt.Sprintf("attachment; filename=\"%v\"", path.Base(ld.Log)))
+	w.Header().Add("Content-Disposition", fmt.Sprintf("attachment; filename=\"%v\"", path.Base(lr.Log)))
 	w.Write(b)
 	return nil, nil
 }
 
 //Stats stats
-func (h Handler) Stats(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
-	app, err := toApp(r)
+func (h Handler) Stats(w http.ResponseWriter, r *http.Request) (interface{}, error) {
+	var sr model.StatsRequest
+	err := json.NewDecoder(r.Body).Decode(&sr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not parse req body as stats request, %v", err)
 	}
-	return stat.Get(r, app, h.logger)
+	return stat.Stats(sr.Log, sr.LogStructure)
 }
 
 //CollectStats collect stats
-func (h Handler) CollectStats(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
-	var s model.CollectStats
+func (h Handler) CollectStats(w http.ResponseWriter, r *http.Request) (interface{}, error) {
+	var s model.CollectStatsRequest
 	err := json.NewDecoder(r.Body).Decode(&s)
 	if err != nil {
-		return nil, e.ClientError("Could not parse req body, %v", err)
+		return nil, fmt.Errorf("Could not parse req body, %v", err)
 	}
-	return stat.CollectStats(r.Context(), s.LogPath, s.LogStructure, s.Date, h.logger)
+	return stat.CollectStats(r.Context(), &s, h.logger)
 }
 
 //Errors errors
-func (h Handler) Errors(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
-	app, err := toApp(r)
+func (h Handler) Errors(w http.ResponseWriter, r *http.Request) (interface{}, error) {
+	var req model.ErrorsRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not parse req body as errors req, %v", err)
 	}
-	return stat.GetErrors(r, app, h.logger)
+	return stat.Errors(&req)
 }
 
 //TailLog tail log
-func (h Handler) TailLog(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
-	app, err := toApp(r)
+func (h Handler) TailLog(w http.ResponseWriter, r *http.Request) (interface{}, error) {
+	var req model.LogRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not parse req body as log req, %v", err)
 	}
-	return h.search.TailLog(r, app)
+	return search.Tail(req.Log)
 }
 
 //ListLogs list logs
-func (h Handler) ListLogs(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
-	var s, err = toSearch(r)
+func (h Handler) ListLogs(w http.ResponseWriter, r *http.Request) (interface{}, error) {
+	h.logger.Info(r.Context(), "list logs module handler...")
+	var lr model.ListLogsRequest
+	err := json.NewDecoder(r.Body).Decode(&lr)
+	if err != nil {
+		return nil, fmt.Errorf("could not serialize list-logs request, %w", err)
+	}
+	return search.ListLogs(r.Context(), lr.Logs, h.logger), nil
+}
+
+//Search search
+func (h Handler) Search(w http.ResponseWriter, r *http.Request) (interface{}, error) {
+	var gr model.GrepRequest
+	err := json.NewDecoder(r.Body).Decode(&gr)
 	if err != nil {
 		return nil, err
 	}
-	return h.search.ListLogs(r, s, h.logger)
-}
-
-func toApp(r *http.Request) (*model.Application, *e.Error) {
-	var app model.Application
-	bytes, err := ioutil.ReadAll(r.Body)
-	defer r.Body.Close()
-	if err != nil {
-		return nil, e.Errorf(http.StatusInternalServerError, "Could not reead req body, %v", err)
-	}
-	err = json.Unmarshal(bytes, &app)
-	if err != nil {
-		return nil, e.Errorf(http.StatusInternalServerError, "Could not unmarshal data, %v", err)
-	}
-	return &app, nil
-}
-
-//SearchHandler search
-func (h Handler) SearchHandler(w http.ResponseWriter, r *http.Request) (interface{}, *e.Error) {
-	var s, err = toSearch(r)
-	if err != nil {
-		return nil, err
-	}
-	res, er := h.search.Find(r, s, h.logger)
-	return res, er
-}
-
-func toSearch(r *http.Request) (*model.Search, *e.Error) {
-	var s model.Search
-	bytes, err := ioutil.ReadAll(r.Body)
-	defer r.Body.Close()
-	if err != nil {
-		return nil, e.Errorf(http.StatusInternalServerError, "Could not reead req body, %v", err)
-	}
-	err = json.Unmarshal(bytes, &s)
-	if err != nil {
-		return nil, e.Errorf(http.StatusInternalServerError, "Could not unmarshal data, %v", err)
-	}
-	return &s, nil
+	return search.Grep(r.Context(), &gr, h.logger), nil
 }
