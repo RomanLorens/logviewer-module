@@ -23,6 +23,8 @@ func Errors(req *model.ErrorsRequest) (*model.ErrorDetailsPagination, error) {
 	res := make([]model.ErrorDetails, 0, 100)
 	requests := make(map[string]int, 0)
 	scanner := bufio.NewScanner(file)
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
 	ls := req.LogStructure
 	maxTokens := max(ls)
 	for scanner.Scan() {
@@ -111,6 +113,8 @@ func CollectStats(ctx context.Context, req *model.CollectStatsRequest, logger l.
 		ls := req.LogStructure
 		maxTokens := max(ls)
 		scanner := bufio.NewScanner(file)
+		buf := make([]byte, 0, 64*1024)
+		scanner.Buffer(buf, 1024*1024)
 		for scanner.Scan() {
 			tokens := strings.Split(scanner.Text(), "|")
 			if len(tokens) < maxTokens {
@@ -156,6 +160,8 @@ func Stats(log string, ls *model.LogStructure) (map[string]*model.Stat, error) {
 
 	maxTokens := max(ls)
 	scanner := bufio.NewScanner(file)
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
 	for scanner.Scan() {
 		tokens := strings.Split(scanner.Text(), "|")
 		if len(tokens) < maxTokens {
