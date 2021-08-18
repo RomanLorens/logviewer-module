@@ -69,6 +69,7 @@ type TailLogResponse struct {
 	Lines   []string `json:"lines"`
 	Host    string   `json:"host"`
 	Time    int64    `json:"time"`
+	ModTime int64    `json:"modtime"`
 }
 
 //LogDetails log details

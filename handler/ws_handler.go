@@ -8,6 +8,7 @@ import (
 
 	"github.com/RomanLorens/logviewer-module/model"
 	"github.com/RomanLorens/logviewer-module/search"
+	"github.com/RomanLorens/logviewer-module/utils"
 	"github.com/gorilla/websocket"
 )
 
@@ -38,13 +39,16 @@ func (h Handler) TailLogWS(w http.ResponseWriter, r *http.Request) error {
 		ticker.Stop()
 		h.closeWS(r.Context(), c)
 	}()
+	h.logger.Info(r.Context(), "Accepted ws connection from %v", r.RemoteAddr)
 	var lr model.LogRequest
+	done := make(chan bool)
 	if er := c.ReadJSON(&lr); er != nil {
+		<-done
 		return fmt.Errorf("Could not parse incoming request, %v", er)
 	}
 
-	done := make(chan bool)
 	go func(c *websocket.Conn) {
+		utils.CatchError(r.Context(), h.logger)
 		res, err := search.Tail(lr.Log)
 		if err != nil {
 			h.logger.Error(r.Context(), "Error from tail %v", err)
@@ -52,22 +56,36 @@ func (h Handler) TailLogWS(w http.ResponseWriter, r *http.Request) error {
 			return
 		}
 		c.WriteJSON(res)
+		modtime := res.ModTime
+		i := 0
 		for {
 			select {
 			case <-ticker.C:
-				h.logger.Info(r.Context(), "Checking tail logs with ticker")
-				res, err := search.Tail(lr.Log)
+				h.logger.Info(r.Context(), "tail logs ticker %v - modtime %v", i, modtime)
+				i++
+				res, isNeeded, err := search.TailLogIfNewer(lr.Log, modtime)
 				if err != nil {
 					h.logger.Error(r.Context(), "Error from tail %v", err)
 					done <- true
 					break
 				}
+				if !isNeeded {
+					h.logger.Info(r.Context(), "%v was not modified since %v", lr.Log, modtime)
+					continue
+				}
+				modtime = res.ModTime
 				c.WriteJSON(res)
+				if i >= 100 {
+					h.logger.Info(r.Context(), "timeout limit for ws ticker reached - closing connection")
+					done <- true
+					break
+				}
 			}
 		}
 	}(c)
 
 	go func(c *websocket.Conn) {
+		utils.CatchError(r.Context(), h.logger)
 		_, _, err := c.ReadMessage()
 		if err != nil {
 			h.logger.Info(r.Context(), "Closing connection - %v", err)

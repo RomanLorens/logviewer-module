@@ -67,17 +67,25 @@ func grepFile(path string, value string) ([]string, error) {
 
 //Tail tail log
 func Tail(log string) (*model.TailLogResponse, error) {
+	res, _, err := TailLogIfNewer(log, 0)
+	return res, err
+}
+
+//TailLogIfNewer tail log
+func TailLogIfNewer(log string, modtime int64) (*model.TailLogResponse, bool, error) {
 	start := time.Now()
 	file, err := os.Open(log)
 	if err != nil {
-		return nil, fmt.Errorf("Could not open file %v", err)
+		return nil, true, fmt.Errorf("Could not open file %v", err)
 	}
 	defer file.Close()
 	info, err := file.Stat()
 	if err != nil {
-		return nil, fmt.Errorf("Could not stat file %v", err)
+		return nil, true, fmt.Errorf("Could not stat file %v", err)
 	}
-
+	if modtime >= info.ModTime().Unix() {
+		return nil, false, nil
+	}
 	offset := info.Size() - int64(tailSizeKB*1024)
 	if offset < 0 {
 		offset = 0
@@ -86,7 +94,7 @@ func Tail(log string) (*model.TailLogResponse, error) {
 
 	_, err = file.ReadAt(bytes, offset)
 	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("Could not stat file %v", err)
+		return nil, true, fmt.Errorf("Could not stat file %v", err)
 	}
 
 	//start from new line
@@ -108,7 +116,8 @@ func Tail(log string) (*model.TailLogResponse, error) {
 		Lines:   lines,
 		Time:    time.Now().Sub(start).Milliseconds(),
 		LogFile: log,
-	}, nil
+		ModTime: info.ModTime().Unix(),
+	}, true, nil
 }
 
 //ListLogs list logs
