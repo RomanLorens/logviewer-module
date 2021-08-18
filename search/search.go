@@ -53,6 +53,8 @@ func grepFile(path string, value string) ([]string, error) {
 	}
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
 	val := strings.ToLower(value)
 	for scanner.Scan() {
 		if strings.Contains(strings.ToLower(scanner.Text()), val) {
